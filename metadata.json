@@ -1,0 +1,6 @@
+{
+  "name": "Spark Law",
+  "description": "A clean, high-density legal news portal featuring Supreme Court cases, High Court orders, law school updates, and interactive judgment summaries.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

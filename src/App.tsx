@@ -1,0 +1,398 @@
+import React, { useState, useEffect } from "react";
+import { MOCK_ARTICLES, CATEGORIES } from "./data";
+import { LegalArticle, LawUpdateSubmission } from "./types";
+import Header from "./components/Header";
+import Sidebar from "./components/Sidebar";
+import ArticleCard from "./components/ArticleCard";
+import ArticleDetailView from "./components/ArticleDetailView";
+import SubmitLawUpdateModal from "./components/SubmitLawUpdateModal";
+import BookmarksView from "./components/BookmarksView";
+import { Bell, Scale, HelpCircle, BookOpen, AlertTriangle, ChevronRight, CornerDownRight } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+
+export default function App() {
+  // Navigation & Filtering state
+  const [currentCategory, setCurrentCategory] = useState<string>("All Updates");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"news" | "bookmarks">("news");
+  
+  // Modals state
+  const [isSubmitModalOpen, setIsSubmitModalOpen] = useState<boolean>(false);
+
+  // Bookmarking state (backed up to localStorage for durable client persistence)
+  const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem("sparklaw_bookmarks") || localStorage.getItem("livelaw_bookmarks");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Submitted cases state (backed up to localStorage)
+  const [submissions, setSubmissions] = useState<LawUpdateSubmission[]>(() => {
+    const saved = localStorage.getItem("sparklaw_submissions") || localStorage.getItem("livelaw_submissions");
+    if (saved) return JSON.parse(saved);
+
+    // Initial mock lawyer submissions for realism
+    return [
+      {
+        id: "sub-1",
+        title: "Advocates Association Urges Allocation of Digital Infrastructure Grants for Mofussil Bar Rooms",
+        court: "Bombay High Court",
+        caseNumber: "Suo Motu W.P. No. 12/2026",
+        bench: "Justice Devendra Kumar Upadhyaya",
+        summary: "Requesting immediate installation of high-speed optical fiber connectivity and e-filing terminals across rural and semi-urban court bar associations.",
+        submittedBy: "Rajesh S. Patil (Adv.)",
+        email: "patil.associates@bar.in",
+        status: "approved",
+        submittedAt: "2026-07-04T12:00:00Z"
+      },
+      {
+        id: "sub-2",
+        title: "Environment Trust Challenges Infrastructure Excavation in Declared Reserve Forest Zones",
+        court: "Delhi High Court",
+        caseNumber: "W.P.(C) PIL No. 240/2026",
+        bench: "Acting Chief Justice Manmohan",
+        summary: "PIL seeking standard environmental impact assessment auditing for underpass and cable trenches running adjacent to protected ridge lines.",
+        submittedBy: "Meera Sen (Adv.)",
+        email: "meera.sen@greenlaw.org",
+        status: "pending",
+        submittedAt: "2026-07-05T01:30:00Z"
+      }
+    ];
+  });
+
+  // Sync state to localStorage
+  useEffect(() => {
+    localStorage.setItem("sparklaw_bookmarks", JSON.stringify(bookmarkedIds));
+  }, [bookmarkedIds]);
+
+  useEffect(() => {
+    localStorage.setItem("sparklaw_submissions", JSON.stringify(submissions));
+  }, [submissions]);
+
+  // Handlers
+  const handleSelectArticle = (id: string) => {
+    setSelectedArticleId(id);
+    setActiveTab("news");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleToggleBookmark = (id: string) => {
+    setBookmarkedIds((prev) =>
+      prev.includes(id) ? prev.filter((bId) => bId !== id) : [...prev, id]
+    );
+  };
+
+  const handleCardToggleBookmark = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation(); // Stop from triggering card click select
+    handleToggleBookmark(id);
+  };
+
+  const handleClearAllBookmarks = () => {
+    setBookmarkedIds([]);
+  };
+
+  const handleSubmission = (newSub: Omit<LawUpdateSubmission, "id" | "status" | "submittedAt">) => {
+    const fullSubmission: LawUpdateSubmission = {
+      ...newSub,
+      id: `sub-${Date.now()}`,
+      status: "pending",
+      submittedAt: new Date().toISOString()
+    };
+    setSubmissions((prev) => [fullSubmission, ...prev]);
+  };
+
+  // Filter articles based on Category AND Search Query
+  const filteredArticles = MOCK_ARTICLES.filter((article) => {
+    const matchesCategory =
+      currentCategory === "All Updates" || article.category === currentCategory;
+
+    const matchesSearch =
+      searchQuery.trim() === "" ||
+      article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      article.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      article.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (article.caseDetails?.caseName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (article.caseDetails?.citation || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      article.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    return matchesCategory && matchesSearch;
+  });
+
+  // Find trending articles sorted by views
+  const trendingArticles = [...MOCK_ARTICLES]
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 4);
+
+  // Find breaking news items for the ticker
+  const breakingNews = MOCK_ARTICLES.filter((art) => art.isBreaking);
+
+  // Get current active article for details view
+  const activeArticle = MOCK_ARTICLES.find((art) => art.id === selectedArticleId);
+
+  return (
+    <div className="min-h-screen bg-neutral-100/50 flex flex-col font-sans selection:bg-red-800 selection:text-white" id="root-layout">
+      {/* Dynamic Navigation Header */}
+      <Header
+        currentCategory={currentCategory}
+        onSelectCategory={(cat) => {
+          setCurrentCategory(cat);
+          setSelectedArticleId(null);
+          setActiveTab("news");
+        }}
+        searchQuery={searchQuery}
+        onSearchChange={(query) => {
+          setSearchQuery(query);
+          setSelectedArticleId(null);
+          setActiveTab("news");
+        }}
+        bookmarkCount={bookmarkedIds.length}
+        onViewBookmarks={() => {
+          setActiveTab("bookmarks");
+          setSelectedArticleId(null);
+        }}
+        onSubmitUpdateOpen={() => setIsSubmitModalOpen(true)}
+        onGoHome={() => {
+          setCurrentCategory("All Updates");
+          setSelectedArticleId(null);
+          setActiveTab("news");
+          setSearchQuery("");
+        }}
+        activeTab={activeTab}
+      />
+
+      {/* Breaking News Ticker Banner */}
+      {breakingNews.length > 0 && (
+        <div className="bg-red-50 border-b border-red-100 py-2.5 overflow-hidden shadow-sm shrink-0" id="breaking-ticker-banner">
+          <div className="max-w-7xl mx-auto px-4 flex items-center space-x-3 sm:px-6 lg:px-8">
+            <span className="bg-red-800 text-white font-extrabold text-[10px] uppercase tracking-widest px-2.5 py-1 rounded shrink-0 flex items-center space-x-1 shadow-sm">
+              <Bell className="w-3 h-3 text-white animate-bounce shrink-0" />
+              <span>Flash News</span>
+            </span>
+            <div className="flex-1 overflow-hidden relative h-5">
+              <div className="absolute flex space-x-8 animate-marquee whitespace-nowrap text-xs font-bold text-neutral-800">
+                {breakingNews.map((news) => (
+                  <button
+                    key={news.id}
+                    onClick={() => handleSelectArticle(news.id)}
+                    className="hover:text-red-800 hover:underline transition-all text-left inline-flex items-center space-x-1 bg-transparent cursor-pointer"
+                  >
+                    <ChevronRight className="w-3 h-3 text-red-600 shrink-0" />
+                    <span className="italic font-extrabold text-red-900 mr-1">
+                      [{news.caseDetails?.citation || "SC Order"}]
+                    </span>
+                    <span>{news.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Page Layout Wrapper */}
+      <main className="flex-grow max-w-7xl mx-auto w-full px-4 py-8 sm:px-6 lg:px-8" id="primary-content-grid">
+        <AnimatePresence mode="wait">
+          {activeTab === "bookmarks" ? (
+            /* BOOKMARKS PAGE VIEW */
+            <BookmarksView
+              articles={MOCK_ARTICLES}
+              bookmarkIds={bookmarkedIds}
+              onSelectArticle={handleSelectArticle}
+              onToggleBookmark={handleCardToggleBookmark}
+              onClearAll={handleClearAllBookmarks}
+              onBack={() => setActiveTab("news")}
+            />
+          ) : selectedArticleId && activeArticle ? (
+            /* DETAILED SINGLE-ARTICLE READING VIEW */
+            <ArticleDetailView
+              article={activeArticle}
+              onBack={() => setSelectedArticleId(null)}
+              isBookmarked={bookmarkedIds.includes(activeArticle.id)}
+              onToggleBookmark={handleToggleBookmark}
+            />
+          ) : (
+            /* STANDARD NEWS PORTAL DASHBOARD FEED VIEW */
+            <div className="space-y-6">
+              {/* Filter / Search Header indicators */}
+              <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 pb-4 border-b border-neutral-200">
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <Scale className="w-5 h-5 text-red-800" />
+                    <h2 className="text-xl font-black text-neutral-900 tracking-tight font-sans uppercase">
+                      {currentCategory} Dispatch
+                    </h2>
+                  </div>
+                  <p className="text-xs text-neutral-500 font-medium">
+                    Showing latest legal alerts, statutory notifications, and orders.
+                  </p>
+                </div>
+
+                {searchQuery && (
+                  <span className="text-xs font-semibold text-neutral-600 bg-neutral-200/60 px-3 py-1.5 rounded-full inline-block">
+                    Filtered by query: <strong className="text-neutral-900 italic">"{searchQuery}"</strong> ({filteredArticles.length} found)
+                  </span>
+                )}
+              </div>
+
+              {/* Feed Grid (Left column articles, Right column widgets) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                {/* Left Side Content - Legal Article Feed */}
+                <div className="lg:col-span-8 space-y-6">
+                  {filteredArticles.length === 0 ? (
+                    <div className="text-center py-16 bg-white border border-neutral-200 rounded-xl space-y-4 shadow-sm">
+                      <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
+                      <div className="space-y-1">
+                        <p className="text-base font-extrabold text-neutral-950">
+                          No matching legal updates found
+                        </p>
+                        <p className="text-xs text-neutral-500 max-w-xs mx-auto leading-relaxed">
+                          We couldn't locate any rulings or reviews matching your criteria. Try resetting your search filter or selecting a different court.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSearchQuery("");
+                          setCurrentCategory("All Updates");
+                        }}
+                        className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors cursor-pointer"
+                      >
+                        Reset All Filters
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-8">
+                      {/* Highlighted Lead Hero Article (If no search query/filter is active) */}
+                      {!searchQuery && filteredArticles.length > 0 && (
+                        <ArticleCard
+                          article={filteredArticles[0]}
+                          onSelect={handleSelectArticle}
+                          isBookmarked={bookmarkedIds.includes(filteredArticles[0].id)}
+                          onToggleBookmark={handleCardToggleBookmark}
+                          isHero={true}
+                        />
+                      )}
+
+                      {/* Standard Grid of remaining updates */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        {(searchQuery ? filteredArticles : filteredArticles.slice(1)).map((article) => (
+                          <ArticleCard
+                            key={article.id}
+                            article={article}
+                            onSelect={handleSelectArticle}
+                            isBookmarked={bookmarkedIds.includes(article.id)}
+                            onToggleBookmark={handleCardToggleBookmark}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Side Content - Side widgets (Trending, Submissions, Newsletter) */}
+                <div className="lg:col-span-4">
+                  <Sidebar
+                    trendingArticles={trendingArticles}
+                    onSelectArticle={handleSelectArticle}
+                    recentSubmissions={submissions}
+                    onSubmitUpdateOpen={() => setIsSubmitModalOpen(true)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </AnimatePresence>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-neutral-900 text-white border-t border-neutral-800 mt-12 py-12 shrink-0" id="portal-footer">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-12 gap-8">
+          {/* Logo Brand info */}
+          <div className="md:col-span-5 space-y-4">
+            <div className="flex items-center space-x-2.5">
+              <div className="bg-red-800 text-white p-1.5 rounded">
+                <Scale className="w-5 h-5 text-white" />
+              </div>
+              <span className="font-extrabold text-lg tracking-tight">SPARK LAW PORTAL</span>
+            </div>
+            <p className="text-xs text-neutral-400 leading-relaxed max-w-sm">
+              Spark Law Portal is an authoritative independent judicial reporting agency. We provide certified summaries of legal decrees, supreme court writ arguments, and high-court dockets for practitioners, students, and legal scholars in India.
+            </p>
+            <p className="text-[10px] text-neutral-500 font-medium">
+              © {new Date().getFullYear()} Legal News Portal. All Rights Reserved. Built with precision for digital jurisprudence.
+            </p>
+          </div>
+
+          {/* Quick links */}
+          <div className="md:col-span-4 space-y-3.5">
+            <h4 className="text-xs font-extrabold uppercase tracking-widest text-neutral-400">
+              Judiciary Quick Links
+            </h4>
+            <div className="grid grid-cols-2 gap-2 text-xs text-neutral-400">
+              <button 
+                onClick={() => { setCurrentCategory("Supreme Court"); setSelectedArticleId(null); setActiveTab("news"); }}
+                className="hover:text-red-400 text-left transition-colors font-medium cursor-pointer"
+              >
+                Supreme Court
+              </button>
+              <button 
+                onClick={() => { setCurrentCategory("High Courts"); setSelectedArticleId(null); setActiveTab("news"); }}
+                className="hover:text-red-400 text-left transition-colors font-medium cursor-pointer"
+              >
+                High Courts
+              </button>
+              <button 
+                onClick={() => { setCurrentCategory("Corporate Law"); setSelectedArticleId(null); setActiveTab("news"); }}
+                className="hover:text-red-400 text-left transition-colors font-medium cursor-pointer"
+              >
+                Corporate Law
+              </button>
+              <button 
+                onClick={() => { setCurrentCategory("IBC & Tax"); setSelectedArticleId(null); setActiveTab("news"); }}
+                className="hover:text-red-400 text-left transition-colors font-medium cursor-pointer"
+              >
+                Insolvency & Tax
+              </button>
+              <button 
+                onClick={() => { setCurrentCategory("Law Schools"); setSelectedArticleId(null); setActiveTab("news"); }}
+                className="hover:text-red-400 text-left transition-colors font-medium cursor-pointer"
+              >
+                Law Schools
+              </button>
+              <button 
+                onClick={() => { setCurrentCategory("Opinions & Columns"); setSelectedArticleId(null); setActiveTab("news"); }}
+                className="hover:text-red-400 text-left transition-colors font-medium cursor-pointer"
+              >
+                Editorials
+              </button>
+            </div>
+          </div>
+
+          {/* Contact and terms */}
+          <div className="md:col-span-3 space-y-3.5">
+            <h4 className="text-xs font-extrabold uppercase tracking-widest text-neutral-400">
+              Contact & Submissions
+            </h4>
+            <p className="text-xs text-neutral-400 leading-relaxed">
+              Have questions regarding case audits or looking to contribute? Get in touch with our Supreme Court press room.
+            </p>
+            <div className="text-[11px] text-neutral-500 font-semibold space-y-1">
+              <p>Email: editors@sparklaw.in</p>
+              <p>New Delhi Press Guild, India</p>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* Interactive Case Submission Modal */}
+      <AnimatePresence>
+        {isSubmitModalOpen && (
+          <SubmitLawUpdateModal
+            isOpen={isSubmitModalOpen}
+            onClose={() => setIsSubmitModalOpen(false)}
+            onSubmit={handleSubmission}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
