@@ -39,3 +39,13 @@ export interface LawUpdateSubmission {
   status: "pending" | "approved" | "rejected";
   submittedAt: string;
 }
+
+export interface PortalUser {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "contributor";
+  password?: string; // used for simple client-side mock auth validation
+  createdAt: string;
+}
+

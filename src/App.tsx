@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { MOCK_ARTICLES, CATEGORIES } from "./data";
-import { LegalArticle, LawUpdateSubmission } from "./types";
+import { LegalArticle, LawUpdateSubmission, PortalUser } from "./types";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import ArticleCard from "./components/ArticleCard";
 import ArticleDetailView from "./components/ArticleDetailView";
 import SubmitLawUpdateModal from "./components/SubmitLawUpdateModal";
 import BookmarksView from "./components/BookmarksView";
-import { Bell, Scale, HelpCircle, BookOpen, AlertTriangle, ChevronRight, CornerDownRight } from "lucide-react";
+import { AdminDashboard } from "./components/AdminDashboard";
+import { Bell, Scale, HelpCircle, BookOpen, AlertTriangle, ChevronRight, CornerDownRight, Award } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 export default function App() {
@@ -17,8 +18,22 @@ export default function App() {
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"news" | "bookmarks">("news");
   
-  // Modals state
+  // Modals & Panels state
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState<boolean>(false);
+  const [showAdmin, setShowAdmin] = useState<boolean>(false);
+
+  // Dynamic news articles state (backed up to localStorage for persistence)
+  const [articles, setArticles] = useState<LegalArticle[]>(() => {
+    const saved = localStorage.getItem("sparklaw_articles");
+    if (saved) return JSON.parse(saved);
+    return MOCK_ARTICLES; // start empty as requested
+  });
+
+  // Team Contributors state
+  const [users, setUsers] = useState<PortalUser[]>(() => {
+    const saved = localStorage.getItem("sparklaw_contributors");
+    return saved ? JSON.parse(saved) : [];
+  });
 
   // Bookmarking state (backed up to localStorage for durable client persistence)
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => {
@@ -69,6 +84,14 @@ export default function App() {
     localStorage.setItem("sparklaw_submissions", JSON.stringify(submissions));
   }, [submissions]);
 
+  useEffect(() => {
+    localStorage.setItem("sparklaw_articles", JSON.stringify(articles));
+  }, [articles]);
+
+  useEffect(() => {
+    localStorage.setItem("sparklaw_contributors", JSON.stringify(users));
+  }, [users]);
+
   // Handlers
   const handleSelectArticle = (id: string) => {
     setSelectedArticleId(id);
@@ -102,7 +125,7 @@ export default function App() {
   };
 
   // Filter articles based on Category AND Search Query
-  const filteredArticles = MOCK_ARTICLES.filter((article) => {
+  const filteredArticles = articles.filter((article) => {
     const matchesCategory =
       currentCategory === "All Updates" || article.category === currentCategory;
 
@@ -119,15 +142,33 @@ export default function App() {
   });
 
   // Find trending articles sorted by views
-  const trendingArticles = [...MOCK_ARTICLES]
+  const trendingArticles = [...articles]
     .sort((a, b) => b.views - a.views)
     .slice(0, 4);
 
   // Find breaking news items for the ticker
-  const breakingNews = MOCK_ARTICLES.filter((art) => art.isBreaking);
+  const breakingNews = articles.filter((art) => art.isBreaking);
 
   // Get current active article for details view
-  const activeArticle = MOCK_ARTICLES.find((art) => art.id === selectedArticleId);
+  const activeArticle = articles.find((art) => art.id === selectedArticleId);
+
+  if (showAdmin) {
+    return (
+      <AdminDashboard
+        articles={articles}
+        onAddArticle={(newArt) => setArticles(prev => [newArt, ...prev])}
+        onDeleteArticle={(id) => setArticles(prev => prev.filter(art => art.id !== id))}
+        submissions={submissions}
+        onUpdateSubmissionStatus={(id, status) => {
+          setSubmissions(prev => prev.map(s => s.id === id ? { ...s, status } : s));
+        }}
+        users={users}
+        onAddUser={(newUser) => setUsers(prev => [...prev, newUser])}
+        onDeleteUser={(id) => setUsers(prev => prev.filter(u => u.id !== id))}
+        onClose={() => setShowAdmin(false)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-100/50 flex flex-col font-sans selection:bg-red-800 selection:text-white" id="root-layout">
@@ -158,6 +199,7 @@ export default function App() {
           setSearchQuery("");
         }}
         activeTab={activeTab}
+        onAdminOpen={() => setShowAdmin(true)}
       />
 
       {/* Breaking News Ticker Banner */}
@@ -195,7 +237,7 @@ export default function App() {
           {activeTab === "bookmarks" ? (
             /* BOOKMARKS PAGE VIEW */
             <BookmarksView
-              articles={MOCK_ARTICLES}
+              articles={articles}
               bookmarkIds={bookmarkedIds}
               onSelectArticle={handleSelectArticle}
               onToggleBookmark={handleCardToggleBookmark}
@@ -238,7 +280,39 @@ export default function App() {
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 {/* Left Side Content - Legal Article Feed */}
                 <div className="lg:col-span-8 space-y-6">
-                  {filteredArticles.length === 0 ? (
+                  {articles.length === 0 ? (
+                    <div className="text-center py-12 bg-white border border-neutral-200 rounded-xl p-8 space-y-4 shadow-sm" id="empty-portal-state">
+                      <div className="bg-red-50 text-red-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                        <Scale className="w-8 h-8 text-red-800" />
+                      </div>
+                      <div className="space-y-2 max-w-md mx-auto">
+                        <h3 className="text-lg font-black text-neutral-900 uppercase tracking-tight">
+                          Welcome to Spark Law
+                        </h3>
+                        <p className="text-xs text-neutral-600 leading-relaxed">
+                          All dummy news has been successfully cleared as requested! The legal news database is currently fresh and ready for custom publications.
+                        </p>
+                        <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 font-sans text-xs text-left space-y-2 text-neutral-700">
+                          <p className="font-bold text-neutral-900 flex items-center gap-1">
+                            <Award className="w-4 h-4 text-amber-600 shrink-0" />
+                            How to publish news:
+                          </p>
+                          <ul className="list-disc pl-4 space-y-1 text-neutral-600">
+                            <li>Click on <strong className="text-red-800 font-semibold cursor-pointer" onClick={() => setShowAdmin(true)}>Staff Portal</strong> in the top header.</li>
+                            <li>Log in using: <code className="bg-neutral-200 px-1 rounded text-red-800 font-mono">admin@sparklaw.in</code> and password <code className="bg-neutral-200 px-1 rounded text-red-800 font-mono">admin123</code>.</li>
+                            <li>Add articles, register contributors, and approve advocate submissions instantly!</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setShowAdmin(true)}
+                        className="px-5 py-2.5 bg-red-800 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-all shadow-md cursor-pointer inline-flex items-center space-x-2"
+                        id="empty-staff-portal-redirect"
+                      >
+                        <span>Open Staff Portal</span>
+                      </button>
+                    </div>
+                  ) : filteredArticles.length === 0 ? (
                     <div className="text-center py-16 bg-white border border-neutral-200 rounded-xl space-y-4 shadow-sm">
                       <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
                       <div className="space-y-1">

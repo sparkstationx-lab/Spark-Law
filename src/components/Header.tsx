@@ -12,6 +12,7 @@ interface HeaderProps {
   onSubmitUpdateOpen: () => void;
   onGoHome: () => void;
   activeTab: "news" | "bookmarks" | "submissions";
+  onAdminOpen: () => void;
 }
 
 export default function Header({
@@ -23,7 +24,8 @@ export default function Header({
   onViewBookmarks,
   onSubmitUpdateOpen,
   onGoHome,
-  activeTab
+  activeTab,
+  onAdminOpen
 }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -50,15 +52,24 @@ export default function Header({
           <span className="hidden sm:inline text-neutral-400">|</span>
           <span className="hidden sm:inline text-neutral-300">Supreme Court & High Courts Daily Dispatch</span>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3">
           <button 
             onClick={onSubmitUpdateOpen}
-            className="flex items-center space-x-1 text-red-400 hover:text-red-300 transition-colors font-medium cursor-pointer"
+            className="flex items-center space-x-1 text-red-400 hover:text-red-300 transition-colors font-medium cursor-pointer text-xs"
           >
             <Send className="w-3 h-3" />
-            <span>Submit Law Update</span>
+            <span>Submit Update</span>
           </button>
-          <span className="text-neutral-500">|</span>
+          <span className="text-neutral-600">|</span>
+          <button 
+            onClick={onAdminOpen}
+            className="flex items-center space-x-1 text-amber-400 hover:text-amber-300 transition-colors font-semibold cursor-pointer text-xs uppercase tracking-wider"
+            id="header-staff-portal-btn"
+          >
+            <Award className="w-3.5 h-3.5" />
+            <span>Staff Portal</span>
+          </button>
+          <span className="text-neutral-600">|</span>
           <div className="flex items-center space-x-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-emerald-400 text-[11px] font-semibold tracking-wider uppercase">Live Coverage</span>
@@ -250,6 +261,17 @@ export default function Header({
               >
                 <FileText className="w-4 h-4 text-neutral-500" />
                 <span>Submit Legal Update</span>
+              </button>
+              <button
+                onClick={() => {
+                  onAdminOpen();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center space-x-2.5 text-amber-800 hover:bg-amber-50 p-2.5 rounded-lg text-sm font-semibold border border-amber-200/55 bg-amber-50/20"
+                id="mobile-staff-portal-btn"
+              >
+                <Award className="w-4 h-4 text-amber-600" />
+                <span>Staff Portal Login</span>
               </button>
             </div>
           </div>
