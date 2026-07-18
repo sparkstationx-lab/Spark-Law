@@ -15,10 +15,13 @@ import {
   Folder, 
   FileCheck, 
   UserPlus,
-  Scale
+  Scale,
+  Database,
+  DatabaseZap
 } from "lucide-react";
 import { LegalArticle, LawUpdateSubmission, PortalUser } from "../types";
 import { CATEGORIES, HIGH_COURTS_LIST } from "../data";
+import { isSupabaseConfigured, SUPABASE_SQL_SCHEMA, supabase } from "../lib/supabase";
 
 interface AdminDashboardProps {
   articles: LegalArticle[];
@@ -93,38 +96,73 @@ export function AdminDashboard({
   const [publishSuccess, setPublishSuccess] = useState(false);
 
   // Handle Login
-  const handleLogin = (e: React.FormEvent) => {
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
+    setIsLoggingIn(true);
 
-    // Check credentials against system admin and custom contributors
-    if (email.trim() === "admin@sparklaw.in" && password === "admin123") {
-      const adminUser: PortalUser = {
-        id: "admin-default",
-        name: "Supreme Administrator",
-        email: "admin@sparklaw.in",
-        role: "admin",
-        createdAt: new Date().toISOString()
-      };
-      setCurrentUser(adminUser);
-      localStorage.setItem("sparklaw_current_user", JSON.stringify(adminUser));
-      return;
-    }
+    try {
+      // 1. Check built-in supreme administrator fallback credentials (for quick testing/failsafes)
+      if (email.trim() === "admin@sparklaw.in" && password === "admin123") {
+        const adminUser: PortalUser = {
+          id: "admin-default",
+          name: "Supreme Administrator",
+          email: "admin@sparklaw.in",
+          role: "admin",
+          createdAt: new Date().toISOString()
+        };
+        setCurrentUser(adminUser);
+        localStorage.setItem("sparklaw_current_user", JSON.stringify(adminUser));
+        return;
+      }
 
-    // Check registered custom users
-    const matchedUser = users.find(u => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password);
-    if (matchedUser) {
-      const userSession: PortalUser = {
-        id: matchedUser.id,
-        name: matchedUser.name,
-        email: matchedUser.email,
-        role: matchedUser.role,
-        createdAt: matchedUser.createdAt
-      };
-      setCurrentUser(userSession);
-      localStorage.setItem("sparklaw_current_user", JSON.stringify(userSession));
-    } else {
-      setLoginError("Invalid email or password. Try admin@sparklaw.in with password admin123");
+      // 2. If Supabase is configured, attempt real-time cloud query
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase
+          .from("contributors")
+          .select("*")
+          .eq("email", email.trim().toLowerCase())
+          .eq("password", password)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Supabase authenticating error:", error);
+        } else if (data) {
+          const userSession: PortalUser = {
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            role: data.role as "admin" | "contributor",
+            createdAt: data.created_at
+          };
+          setCurrentUser(userSession);
+          localStorage.setItem("sparklaw_current_user", JSON.stringify(userSession));
+          return;
+        }
+      }
+
+      // 3. Fallback to check registered local contributors list
+      const matchedUser = users.find(u => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password);
+      if (matchedUser) {
+        const userSession: PortalUser = {
+          id: matchedUser.id,
+          name: matchedUser.name,
+          email: matchedUser.email,
+          role: matchedUser.role,
+          createdAt: matchedUser.createdAt
+        };
+        setCurrentUser(userSession);
+        localStorage.setItem("sparklaw_current_user", JSON.stringify(userSession));
+      } else {
+        setLoginError("Invalid email or password. Try admin@sparklaw.in with password admin123");
+      }
+    } catch (error) {
+      console.error("Authentication error:", error);
+      setLoginError("An unexpected error occurred during sign-in. Please try again.");
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -317,10 +355,11 @@ export function AdminDashboard({
 
               <button
                 type="submit"
-                className="w-full bg-red-800 hover:bg-red-700 active:bg-red-900 text-white font-bold text-sm py-3 px-4 rounded transition shadow-lg mt-6"
+                disabled={isLoggingIn}
+                className="w-full bg-red-800 hover:bg-red-700 active:bg-red-900 text-white font-bold text-sm py-3 px-4 rounded transition shadow-lg mt-6 disabled:opacity-60 disabled:cursor-wait"
                 id="login-submit-btn"
               >
-                Sign In to Dashboard
+                {isLoggingIn ? "Verifying Credentials..." : "Sign In to Dashboard"}
               </button>
             </form>
 
@@ -442,6 +481,22 @@ export function AdminDashboard({
                   {submissions.filter(s => s.status === "pending").length}
                 </span>
               )}
+            </div>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("database")}
+            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center space-x-3 transition ${
+              activeTab === "database" 
+                ? "bg-red-800 text-white shadow-md shadow-red-900/20" 
+                : "text-neutral-400 hover:bg-neutral-800 hover:text-white"
+            }`}
+            id="tab-database-btn"
+          >
+            <DatabaseZap className="w-4 h-4 shrink-0" />
+            <div className="flex-1 flex justify-between items-center">
+              <span>Database Cloud API</span>
+              <span className={`w-2.5 h-2.5 rounded-full ${isSupabaseConfigured ? "bg-green-500 shadow-sm shadow-green-500/55 animate-pulse" : "bg-amber-500 shadow-sm shadow-amber-500/55"}`} />
             </div>
           </button>
 
@@ -1031,6 +1086,77 @@ export function AdminDashboard({
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB 5: DATABASE STATUS & SCHEMA COPIER */}
+          {activeTab === "database" && (
+            <div className="space-y-6" id="panel-database-status">
+              <div className="border-b border-neutral-800 pb-4">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <DatabaseZap className="w-5 h-5 text-red-500" />
+                  Supabase Real-time Cloud Database
+                </h2>
+                <p className="text-xs text-neutral-400">
+                  Connect your Spark Law instance to a production-ready PostgreSQL engine powered by Supabase.
+                </p>
+              </div>
+
+              {/* Status Indicator Card */}
+              <div className={`p-6 rounded-xl border ${
+                isSupabaseConfigured 
+                  ? "bg-green-950/20 border-green-800/60 text-green-300" 
+                  : "bg-amber-950/20 border-amber-800/60 text-amber-300"
+              } space-y-3`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${isSupabaseConfigured ? "bg-green-500 animate-pulse" : "bg-amber-500"}`} />
+                  <span className="font-extrabold text-sm uppercase tracking-wider font-mono">
+                    {isSupabaseConfigured ? "STATUS: LIVE CLOUD SYNC" : "STATUS: LOCAL FALLBACK ENGINE"}
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-300 leading-relaxed">
+                  {isSupabaseConfigured 
+                    ? "Spark Law is successfully linked to your live Supabase cloud backend! All published reports, advocate pitches, and team login accounts are synchronizing in real-time."
+                    : "The system is currently running on the local storage sandbox fallback because API environment credentials are not declared in Settings. Don't worry! All published legal updates, writer accounts, and submissions will still persist completely fine within your browser cache, and will migrate safely once configured."}
+                </p>
+              </div>
+
+              {/* Setup Guide */}
+              <div className="bg-neutral-900 rounded-lg p-5 border border-neutral-800 space-y-4">
+                <h3 className="font-bold text-sm text-neutral-200 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-red-500" />
+                  How to setup Supabase Cloud:
+                </h3>
+                <ol className="list-decimal list-inside text-xs text-neutral-400 space-y-2 leading-relaxed">
+                  <li>Go to <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-red-400 hover:underline">supabase.com</a> and spin up a new free project.</li>
+                  <li>Go to your project's <strong>Settings &gt; API</strong> dashboard to locate the public <strong>URL</strong> and <strong>anon/public Key</strong>.</li>
+                  <li>Click on <strong>Settings</strong> at the top right of this editor, and input these variables:
+                    <div className="bg-neutral-950 p-2.5 rounded font-mono text-[11px] text-red-400 mt-2 space-y-1">
+                      <p>VITE_SUPABASE_URL = &quot;your-project-url.supabase.co&quot;</p>
+                      <p>VITE_SUPABASE_ANON_KEY = &quot;your-anon-key-string&quot;</p>
+                    </div>
+                  </li>
+                  <li>Copy the SQL script below and paste it into the <strong>SQL Editor</strong> tab in your Supabase Dashboard, then click <strong>Run</strong>:</li>
+                </ol>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs text-neutral-500">
+                    <span>Database Bootstrap SQL Schema:</span>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(SUPABASE_SQL_SCHEMA);
+                        alert("SQL Schema copied to clipboard!");
+                      }}
+                      className="text-red-400 hover:text-red-300 text-[10px] uppercase font-bold bg-neutral-950 px-2 py-1 rounded border border-neutral-800"
+                    >
+                      Copy SQL
+                    </button>
+                  </div>
+                  <pre className="bg-neutral-950 text-neutral-400 text-[11px] font-mono p-4 rounded-lg overflow-x-auto h-48 border border-neutral-800 leading-relaxed">
+                    {SUPABASE_SQL_SCHEMA}
+                  </pre>
+                </div>
+              </div>
             </div>
           )}
 

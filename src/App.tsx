@@ -8,8 +8,9 @@ import ArticleDetailView from "./components/ArticleDetailView";
 import SubmitLawUpdateModal from "./components/SubmitLawUpdateModal";
 import BookmarksView from "./components/BookmarksView";
 import { AdminDashboard } from "./components/AdminDashboard";
-import { Bell, Scale, HelpCircle, BookOpen, AlertTriangle, ChevronRight, CornerDownRight, Award } from "lucide-react";
+import { Bell, Scale, HelpCircle, BookOpen, AlertTriangle, ChevronRight, CornerDownRight, Award, Database, DatabaseZap } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { db, isSupabaseConfigured } from "./lib/supabase";
 
 export default function App() {
   // Navigation & Filtering state
@@ -22,18 +23,11 @@ export default function App() {
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState<boolean>(false);
   const [showAdmin, setShowAdmin] = useState<boolean>(false);
 
-  // Dynamic news articles state (backed up to localStorage for persistence)
-  const [articles, setArticles] = useState<LegalArticle[]>(() => {
-    const saved = localStorage.getItem("sparklaw_articles");
-    if (saved) return JSON.parse(saved);
-    return MOCK_ARTICLES; // start empty as requested
-  });
+  // Dynamic news articles state
+  const [articles, setArticles] = useState<LegalArticle[]>([]);
 
   // Team Contributors state
-  const [users, setUsers] = useState<PortalUser[]>(() => {
-    const saved = localStorage.getItem("sparklaw_contributors");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [users, setUsers] = useState<PortalUser[]>([]);
 
   // Bookmarking state (backed up to localStorage for durable client persistence)
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => {
@@ -41,56 +35,85 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Submitted cases state (backed up to localStorage)
-  const [submissions, setSubmissions] = useState<LawUpdateSubmission[]>(() => {
-    const saved = localStorage.getItem("sparklaw_submissions") || localStorage.getItem("livelaw_submissions");
-    if (saved) return JSON.parse(saved);
+  // Submitted cases state
+  const [submissions, setSubmissions] = useState<LawUpdateSubmission[]>([]);
 
-    // Initial mock lawyer submissions for realism
-    return [
-      {
-        id: "sub-1",
-        title: "Advocates Association Urges Allocation of Digital Infrastructure Grants for Mofussil Bar Rooms",
-        court: "Bombay High Court",
-        caseNumber: "Suo Motu W.P. No. 12/2026",
-        bench: "Justice Devendra Kumar Upadhyaya",
-        summary: "Requesting immediate installation of high-speed optical fiber connectivity and e-filing terminals across rural and semi-urban court bar associations.",
-        submittedBy: "Rajesh S. Patil (Adv.)",
-        email: "patil.associates@bar.in",
-        status: "approved",
-        submittedAt: "2026-07-04T12:00:00Z"
-      },
-      {
-        id: "sub-2",
-        title: "Environment Trust Challenges Infrastructure Excavation in Declared Reserve Forest Zones",
-        court: "Delhi High Court",
-        caseNumber: "W.P.(C) PIL No. 240/2026",
-        bench: "Acting Chief Justice Manmohan",
-        summary: "PIL seeking standard environmental impact assessment auditing for underpass and cable trenches running adjacent to protected ridge lines.",
-        submittedBy: "Meera Sen (Adv.)",
-        email: "meera.sen@greenlaw.org",
-        status: "pending",
-        submittedAt: "2026-07-05T01:30:00Z"
+  // Database loading state
+  const [isLoadingDb, setIsLoadingDb] = useState<boolean>(true);
+
+  // Load data from db (Supabase or Local Storage fallback) on mount
+  useEffect(() => {
+    async function loadData() {
+      setIsLoadingDb(true);
+      try {
+        const dbArticles = await db.getArticles();
+        const dbContributors = await db.getContributors();
+        const dbSubmissions = await db.getSubmissions();
+
+        // Populate articles
+        if (dbArticles.length > 0) {
+          setArticles(dbArticles);
+        } else {
+          // If both Supabase and localStorage are clean, bootstrap with our mock articles
+          setArticles(MOCK_ARTICLES);
+          // Async bootstrap database so subsequent reloads have it
+          for (const art of MOCK_ARTICLES) {
+            await db.saveArticle(art);
+          }
+        }
+
+        // Populate contributors
+        setUsers(dbContributors);
+
+        // Populate submissions
+        if (dbSubmissions.length > 0) {
+          setSubmissions(dbSubmissions);
+        } else {
+          const defaultSubmissions: LawUpdateSubmission[] = [
+            {
+              id: "sub-1",
+              title: "Advocates Association Urges Allocation of Digital Infrastructure Grants for Mofussil Bar Rooms",
+              court: "Bombay High Court",
+              caseNumber: "Suo Motu W.P. No. 12/2026",
+              bench: "Justice Devendra Kumar Upadhyaya",
+              summary: "Requesting immediate installation of high-speed optical fiber connectivity and e-filing terminals across rural and semi-urban court bar associations.",
+              submittedBy: "Rajesh S. Patil (Adv.)",
+              email: "patil.associates@bar.in",
+              status: "approved",
+              submittedAt: "2026-07-04T12:00:00Z"
+            },
+            {
+              id: "sub-2",
+              title: "Environment Trust Challenges Infrastructure Excavation in Declared Reserve Forest Zones",
+              court: "Delhi High Court",
+              caseNumber: "W.P.(C) PIL No. 240/2026",
+              bench: "Acting Chief Justice Manmohan",
+              summary: "PIL seeking standard environmental impact assessment auditing for underpass and cable trenches running adjacent to protected ridge lines.",
+              submittedBy: "Meera Sen (Adv.)",
+              email: "meera.sen@greenlaw.org",
+              status: "pending",
+              submittedAt: "2026-07-05T01:30:00Z"
+            }
+          ];
+          setSubmissions(defaultSubmissions);
+          // Async bootstrap submissions
+          for (const s of defaultSubmissions) {
+            await db.saveSubmission(s);
+          }
+        }
+      } catch (error) {
+        console.error("Error initializing Spark Law Database:", error);
+      } finally {
+        setIsLoadingDb(false);
       }
-    ];
-  });
+    }
+    loadData();
+  }, []);
 
-  // Sync state to localStorage
+  // Sync bookmark state to localStorage (user-specific local storage preference)
   useEffect(() => {
     localStorage.setItem("sparklaw_bookmarks", JSON.stringify(bookmarkedIds));
   }, [bookmarkedIds]);
-
-  useEffect(() => {
-    localStorage.setItem("sparklaw_submissions", JSON.stringify(submissions));
-  }, [submissions]);
-
-  useEffect(() => {
-    localStorage.setItem("sparklaw_articles", JSON.stringify(articles));
-  }, [articles]);
-
-  useEffect(() => {
-    localStorage.setItem("sparklaw_contributors", JSON.stringify(users));
-  }, [users]);
 
   // Handlers
   const handleSelectArticle = (id: string) => {
@@ -114,13 +137,18 @@ export default function App() {
     setBookmarkedIds([]);
   };
 
-  const handleSubmission = (newSub: Omit<LawUpdateSubmission, "id" | "status" | "submittedAt">) => {
+  const handleSubmission = async (newSub: Omit<LawUpdateSubmission, "id" | "status" | "submittedAt">) => {
     const fullSubmission: LawUpdateSubmission = {
       ...newSub,
       id: `sub-${Date.now()}`,
       status: "pending",
       submittedAt: new Date().toISOString()
     };
+    
+    // Save to database
+    await db.saveSubmission(fullSubmission);
+    
+    // Update local state
     setSubmissions((prev) => [fullSubmission, ...prev]);
   };
 
@@ -156,15 +184,28 @@ export default function App() {
     return (
       <AdminDashboard
         articles={articles}
-        onAddArticle={(newArt) => setArticles(prev => [newArt, ...prev])}
-        onDeleteArticle={(id) => setArticles(prev => prev.filter(art => art.id !== id))}
+        onAddArticle={async (newArt) => {
+          await db.saveArticle(newArt);
+          setArticles(prev => [newArt, ...prev]);
+        }}
+        onDeleteArticle={async (id) => {
+          await db.deleteArticle(id);
+          setArticles(prev => prev.filter(art => art.id !== id));
+        }}
         submissions={submissions}
-        onUpdateSubmissionStatus={(id, status) => {
+        onUpdateSubmissionStatus={async (id, status) => {
+          await db.updateSubmissionStatus(id, status);
           setSubmissions(prev => prev.map(s => s.id === id ? { ...s, status } : s));
         }}
         users={users}
-        onAddUser={(newUser) => setUsers(prev => [...prev, newUser])}
-        onDeleteUser={(id) => setUsers(prev => prev.filter(u => u.id !== id))}
+        onAddUser={async (newUser) => {
+          await db.saveContributor(newUser);
+          setUsers(prev => [...prev, newUser]);
+        }}
+        onDeleteUser={async (id) => {
+          await db.deleteContributor(id);
+          setUsers(prev => prev.filter(u => u.id !== id));
+        }}
         onClose={() => setShowAdmin(false)}
       />
     );
@@ -201,6 +242,33 @@ export default function App() {
         activeTab={activeTab}
         onAdminOpen={() => setShowAdmin(true)}
       />
+
+      {/* Supabase Connection Status Banner */}
+      <div className={`py-2 px-4 text-center text-xs font-semibold border-b flex items-center justify-center gap-2 transition-colors ${
+        isSupabaseConfigured
+          ? "bg-emerald-50 text-emerald-800 border-emerald-100"
+          : "bg-amber-50 text-amber-800 border-amber-100"
+      }`} id="supabase-status-bar">
+        {isSupabaseConfigured ? (
+          <>
+            <DatabaseZap className="w-4 h-4 text-emerald-600 animate-pulse shrink-0" />
+            <span>Spark Law Database: Connected to Real-time Supabase Cloud!</span>
+          </>
+        ) : (
+          <>
+            <Database className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>Database: Running in Local Fallback Cache.</span>
+            <button
+              onClick={() => {
+                setShowAdmin(true);
+              }}
+              className="underline text-red-800 hover:text-red-700 font-extrabold ml-1 cursor-pointer"
+            >
+              Connect to Supabase Cloud
+            </button>
+          </>
+        )}
+      </div>
 
       {/* Breaking News Ticker Banner */}
       {breakingNews.length > 0 && (
