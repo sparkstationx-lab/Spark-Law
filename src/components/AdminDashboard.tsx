@@ -383,7 +383,7 @@ export function AdminDashboard({
               <p className="font-semibold text-neutral-300">Environment Configured Admin Credentials:</p>
               <div className="bg-neutral-900 p-2.5 rounded border border-neutral-800 font-mono text-[11px] text-red-400 space-y-1">
                 <p>Email ID: {adminEmail}</p>
-                <p>Password: [Securely Verified Server-Side]</p>
+                <p>Password: admin.akram</p>
               </div>
             </div>
           </div>

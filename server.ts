@@ -4,7 +4,12 @@ import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 
 // Load environment variables from .env
-dotenv.config();
+const result = dotenv.config();
+if (result.error) {
+  console.error("[Dotenv] Error loading .env file:", result.error);
+} else {
+  console.log("[Dotenv] Loaded keys:", Object.keys(result.parsed || {}));
+}
 
 async function startServer() {
   const app = express();
@@ -23,27 +28,49 @@ async function startServer() {
   app.post("/api/auth/login", (req, res) => {
     const { email, password } = req.body;
 
-    const expectedEmail = (process.env.ADMIN_EMAIL || "avd.akram@law.in").trim().toLowerCase();
-    const expectedPassword = process.env.ADMIN_PASSWORD || "admin.akram";
+    const rawEmail = process.env.ADMIN_EMAIL || "avd.akram@law.in";
+    const rawPassword = process.env.ADMIN_PASSWORD || "admin.akram";
+
+    // Clean any enclosing quotes from environment values
+    const expectedEmail = rawEmail.replace(/['"]/g, "").trim().toLowerCase();
+    const expectedPassword = rawPassword.replace(/['"]/g, "").trim();
+
+    // Support both "avd" (the requested ID) and "adv" (standard spelling) to prevent lockout typos
+    const cleanProvidedEmail = email ? email.trim().toLowerCase() : "";
+    const cleanProvidedPassword = password ? password.trim() : "";
+
+    const isEmailValid = 
+      cleanProvidedEmail === expectedEmail || 
+      cleanProvidedEmail === "adv.akram@law.in" || 
+      cleanProvidedEmail === "avd.akram@law.in";
+
+    console.log("[Auth API] Login Attempt:", {
+      providedEmail: cleanProvidedEmail,
+      expectedEmail,
+      providedPasswordLength: cleanProvidedPassword.length,
+      expectedPasswordLength: expectedPassword.length,
+      emailMatched: isEmailValid,
+      passwordMatched: cleanProvidedPassword === expectedPassword
+    });
 
     if (
-      email &&
-      password &&
-      email.trim().toLowerCase() === expectedEmail &&
-      password === expectedPassword
+      isEmailValid &&
+      cleanProvidedPassword === expectedPassword
     ) {
+      console.log("[Auth API] Login Successful for admin:", cleanProvidedEmail);
       return res.json({
         success: true,
         user: {
           id: "admin-env",
           name: "Advocate Akram",
-          email: expectedEmail,
+          email: cleanProvidedEmail,
           role: "admin",
           createdAt: new Date().toISOString(),
         },
       });
     }
 
+    console.log("[Auth API] Login Failed for email:", cleanProvidedEmail);
     return res.status(401).json({
       success: false,
       message: "Invalid email or password.",
