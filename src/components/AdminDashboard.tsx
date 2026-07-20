@@ -380,7 +380,20 @@ export function AdminDashboard({
             </form>
 
             <div className="mt-8 pt-6 border-t border-neutral-700 text-xs text-neutral-400 space-y-2">
-              <p className="font-semibold text-neutral-300">Environment Configured Admin Credentials:</p>
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-neutral-300">Environment Configured Admin Credentials:</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail(adminEmail);
+                    setPassword("admin.akram");
+                  }}
+                  className="text-red-400 hover:text-red-300 underline cursor-pointer hover:no-underline transition font-medium text-[11px]"
+                  id="login-autofill-btn"
+                >
+                  Auto-fill Form
+                </button>
+              </div>
               <div className="bg-neutral-900 p-2.5 rounded border border-neutral-800 font-mono text-[11px] text-red-400 space-y-1">
                 <p>Email ID: {adminEmail}</p>
                 <p>Password: admin.akram</p>

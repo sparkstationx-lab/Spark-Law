@@ -1,14 +1,28 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 
 // Load environment variables from .env
 const result = dotenv.config();
+
+const logFilePath = path.join(process.cwd(), "src", "auth_logs.txt");
+
+function writeLog(message: string) {
+  const timestamp = new Date().toISOString();
+  const logLine = `[${timestamp}] ${message}\n`;
+  try {
+    fs.appendFileSync(logFilePath, logLine);
+  } catch (err) {
+    console.error("Failed to write to log file:", err);
+  }
+}
+
 if (result.error) {
-  console.error("[Dotenv] Error loading .env file:", result.error);
+  writeLog(`[Dotenv] Error loading .env file: ${result.error.message}`);
 } else {
-  console.log("[Dotenv] Loaded keys:", Object.keys(result.parsed || {}));
+  writeLog(`[Dotenv] Loaded keys: ${Object.keys(result.parsed || {}).join(", ")}`);
 }
 
 async function startServer() {
@@ -44,20 +58,13 @@ async function startServer() {
       cleanProvidedEmail === "adv.akram@law.in" || 
       cleanProvidedEmail === "avd.akram@law.in";
 
-    console.log("[Auth API] Login Attempt:", {
-      providedEmail: cleanProvidedEmail,
-      expectedEmail,
-      providedPasswordLength: cleanProvidedPassword.length,
-      expectedPasswordLength: expectedPassword.length,
-      emailMatched: isEmailValid,
-      passwordMatched: cleanProvidedPassword === expectedPassword
-    });
+    const isPasswordValid = cleanProvidedPassword === expectedPassword;
 
-    if (
-      isEmailValid &&
-      cleanProvidedPassword === expectedPassword
-    ) {
-      console.log("[Auth API] Login Successful for admin:", cleanProvidedEmail);
+    writeLog(`[Login Attempt] Provided email: "${cleanProvidedEmail}", expected email: "${expectedEmail}". Match: ${isEmailValid}.`);
+    writeLog(`[Login Attempt] Provided password length: ${cleanProvidedPassword.length}, expected password length: ${expectedPassword.length}. Match: ${isPasswordValid}.`);
+
+    if (isEmailValid && isPasswordValid) {
+      writeLog(`[Login Success] Successful admin login for: ${cleanProvidedEmail}`);
       return res.json({
         success: true,
         user: {
@@ -70,7 +77,7 @@ async function startServer() {
       });
     }
 
-    console.log("[Auth API] Login Failed for email:", cleanProvidedEmail);
+    writeLog(`[Login Failure] Failed login attempt for email: "${cleanProvidedEmail}"`);
     return res.status(401).json({
       success: false,
       message: "Invalid email or password.",
@@ -98,6 +105,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
+    writeLog(`[Server Boot] Running on http://localhost:${PORT}`);
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
