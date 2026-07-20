@@ -135,7 +135,7 @@ export const db = {
 
         if (error) throw error;
         
-        return (data || []).map(item => ({
+        const articles = (data || []).map(item => ({
           id: item.id,
           title: item.title,
           summary: item.summary,
@@ -156,6 +156,10 @@ export const db = {
             caseNumber: item.case_details.caseNumber,
           } : undefined
         }));
+
+        // Cache fetched results to local storage
+        localStorage.setItem("sparklaw_articles", JSON.stringify(articles));
+        return articles;
       } catch (err: any) {
         const errorMsg = err?.message || String(err);
         lastSupabaseError = errorMsg;
@@ -192,13 +196,12 @@ export const db = {
           .upsert(payload);
 
         if (error) throw error;
-        return;
       } catch (err) {
         console.error("Supabase saveArticle error:", err);
       }
     }
 
-    // Local storage state fallback
+    // Always update local storage state as well for seamless offline sync / cache reliability
     const saved = localStorage.getItem("sparklaw_articles");
     const current = saved ? JSON.parse(saved) : [];
     const updated = [article, ...current.filter((a: LegalArticle) => a.id !== article.id)];
@@ -214,12 +217,12 @@ export const db = {
           .eq("id", id);
 
         if (error) throw error;
-        return;
       } catch (err) {
         console.error("Supabase deleteArticle error:", err);
       }
     }
 
+    // Always update local storage state as well
     const saved = localStorage.getItem("sparklaw_articles");
     if (saved) {
       const current = JSON.parse(saved);
@@ -239,7 +242,7 @@ export const db = {
 
         if (error) throw error;
 
-        return (data || []).map(item => ({
+        const contributors = (data || []).map(item => ({
           id: item.id,
           name: item.name,
           email: item.email,
@@ -247,6 +250,10 @@ export const db = {
           password: item.password,
           createdAt: item.created_at
         }));
+
+        // Cache fetched contributors to local storage
+        localStorage.setItem("sparklaw_contributors", JSON.stringify(contributors));
+        return contributors;
       } catch (err: any) {
         const errorMsg = err?.message || String(err);
         lastSupabaseError = errorMsg;
@@ -275,12 +282,12 @@ export const db = {
           .upsert(payload);
 
         if (error) throw error;
-        return;
       } catch (err) {
         console.error("Supabase saveContributor error:", err);
       }
     }
 
+    // Always update local storage state as well
     const saved = localStorage.getItem("sparklaw_contributors");
     const current = saved ? JSON.parse(saved) : [];
     const updated = [...current.filter((u: PortalUser) => u.id !== user.id), user];
@@ -296,12 +303,12 @@ export const db = {
           .eq("id", id);
 
         if (error) throw error;
-        return;
       } catch (err) {
         console.error("Supabase deleteContributor error:", err);
       }
     }
 
+    // Always update local storage state as well
     const saved = localStorage.getItem("sparklaw_contributors");
     if (saved) {
       const current = JSON.parse(saved);
@@ -321,7 +328,7 @@ export const db = {
 
         if (error) throw error;
 
-        return (data || []).map(item => ({
+        const submissions = (data || []).map(item => ({
           id: item.id,
           title: item.title,
           summary: item.summary,
@@ -333,6 +340,10 @@ export const db = {
           status: item.status as "pending" | "approved" | "rejected",
           submittedAt: item.submitted_at
         }));
+
+        // Cache fetched submissions to local storage
+        localStorage.setItem("sparklaw_submissions", JSON.stringify(submissions));
+        return submissions;
       } catch (err: any) {
         const errorMsg = err?.message || String(err);
         lastSupabaseError = errorMsg;
@@ -365,12 +376,12 @@ export const db = {
           .upsert(payload);
 
         if (error) throw error;
-        return;
       } catch (err) {
         console.error("Supabase saveSubmission error:", err);
       }
     }
 
+    // Always update local storage state as well
     const saved = localStorage.getItem("sparklaw_submissions");
     const current = saved ? JSON.parse(saved) : [];
     const updated = [sub, ...current.filter((s: LawUpdateSubmission) => s.id !== sub.id)];
@@ -386,12 +397,12 @@ export const db = {
           .eq("id", id);
 
         if (error) throw error;
-        return;
       } catch (err) {
         console.error("Supabase updateSubmissionStatus error:", err);
       }
     }
 
+    // Always update local storage state as well
     const saved = localStorage.getItem("sparklaw_submissions");
     if (saved) {
       const current = JSON.parse(saved);
