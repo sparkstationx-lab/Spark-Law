@@ -102,7 +102,7 @@ ALTER TABLE contributors DISABLE ROW LEVEL SECURITY;
 
 -- Insert a default contributor if you want, or handle dynamically
 -- INSERT INTO contributors (id, name, email, role, password) 
--- VALUES ('admin-default', 'Supreme Admin', 'admin@sparklaw.in', 'admin', 'admin123') 
+-- VALUES ('admin-default', 'Advocate Akram', 'avd.akram@law.in', 'admin', 'YOUR_SECURE_PASSWORD') 
 -- ON CONFLICT DO NOTHING;
 
 -- 3. Create submissions table

@@ -396,7 +396,7 @@ export default function App() {
                           </p>
                           <ul className="list-disc pl-4 space-y-1 text-neutral-600">
                             <li>Click on <strong className="text-red-800 font-semibold cursor-pointer" onClick={() => setShowAdmin(true)}>Staff Portal</strong> in the top header.</li>
-                            <li>Log in using: <code className="bg-neutral-200 px-1 rounded text-red-800 font-mono">admin@sparklaw.in</code> and password <code className="bg-neutral-200 px-1 rounded text-red-800 font-mono">admin123</code>.</li>
+                            <li>Log in using the administrator ID: <code className="bg-neutral-200 px-1 rounded text-red-800 font-mono">avd.akram@law.in</code> and your secure staff password.</li>
                             <li>Add articles, register contributors, and approve advocate submissions instantly!</li>
                           </ul>
                         </div>

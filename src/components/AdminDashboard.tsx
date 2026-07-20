@@ -62,6 +62,18 @@ export function AdminDashboard({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [adminEmail, setAdminEmail] = useState("avd.akram@law.in");
+
+  React.useEffect(() => {
+    fetch("/api/auth/config")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.adminEmail) {
+          setAdminEmail(data.adminEmail);
+        }
+      })
+      .catch((err) => console.error("Error loading secure auth config:", err));
+  }, []);
 
   // Dashboard Tabs
   const [activeTab, setActiveTab] = useState<"upload" | "manage_news" | "users" | "submissions">("upload");
@@ -104,21 +116,25 @@ export function AdminDashboard({
     setIsLoggingIn(true);
 
     try {
-      // 1. Check built-in supreme administrator fallback credentials (for quick testing/failsafes)
-      if (email.trim() === "admin@sparklaw.in" && password === "admin123") {
-        const adminUser: PortalUser = {
-          id: "admin-default",
-          name: "Supreme Administrator",
-          email: "admin@sparklaw.in",
-          role: "admin",
-          createdAt: new Date().toISOString()
-        };
-        setCurrentUser(adminUser);
-        localStorage.setItem("sparklaw_current_user", JSON.stringify(adminUser));
-        return;
+      // 1. Verify credentials via secure backend server
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.user) {
+          setCurrentUser(result.user);
+          localStorage.setItem("sparklaw_current_user", JSON.stringify(result.user));
+          return;
+        }
       }
 
-      // 2. If Supabase is configured, attempt real-time cloud query
+      // 2. If Supabase is configured, attempt real-time cloud query for contributors
       if (isSupabaseConfigured && supabase) {
         const { data, error } = await supabase
           .from("contributors")
@@ -156,7 +172,7 @@ export function AdminDashboard({
         setCurrentUser(userSession);
         localStorage.setItem("sparklaw_current_user", JSON.stringify(userSession));
       } else {
-        setLoginError("Invalid email or password. Try admin@sparklaw.in with password admin123");
+        setLoginError(`Invalid email or password. Please use the configured credentials (e.g. ${adminEmail}).`);
       }
     } catch (error) {
       console.error("Authentication error:", error);
@@ -235,7 +251,7 @@ export function AdminDashboard({
       return;
     }
 
-    if (users.some(u => u.email.toLowerCase() === newUserEmail.toLowerCase()) || newUserEmail.toLowerCase() === "admin@sparklaw.in") {
+    if (users.some(u => u.email.toLowerCase() === newUserEmail.toLowerCase()) || newUserEmail.toLowerCase() === adminEmail.toLowerCase()) {
       setUserFormError("A user with this email address already exists.");
       return;
     }
@@ -332,7 +348,7 @@ export function AdminDashboard({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@sparklaw.in"
+                  placeholder={adminEmail}
                   className="w-full bg-neutral-900 border border-neutral-700 rounded p-2.5 text-sm text-white focus:outline-none focus:border-red-500 transition"
                   id="login-email-input"
                 />
@@ -364,10 +380,10 @@ export function AdminDashboard({
             </form>
 
             <div className="mt-8 pt-6 border-t border-neutral-700 text-xs text-neutral-400 space-y-2">
-              <p className="font-semibold text-neutral-300">Default Sandbox Credentials:</p>
-              <div className="bg-neutral-900 p-2.5 rounded border border-neutral-800 font-mono text-[11px] text-red-400">
-                <p>Email: admin@sparklaw.in</p>
-                <p>Password: admin123</p>
+              <p className="font-semibold text-neutral-300">Environment Configured Admin Credentials:</p>
+              <div className="bg-neutral-900 p-2.5 rounded border border-neutral-800 font-mono text-[11px] text-red-400 space-y-1">
+                <p>Email ID: {adminEmail}</p>
+                <p>Password: [Securely Verified Server-Side]</p>
               </div>
             </div>
           </div>
@@ -951,7 +967,7 @@ export function AdminDashboard({
                     <div className="p-4 flex items-center justify-between text-xs hover:bg-neutral-850/20">
                       <div>
                         <div className="font-bold text-neutral-200">Supreme Administrator (Default)</div>
-                        <div className="text-neutral-500">admin@sparklaw.in</div>
+                        <div className="text-neutral-500">{adminEmail}</div>
                       </div>
                       <div className="flex items-center space-x-3">
                         <span className="bg-red-950 text-red-400 text-[10px] font-bold px-2 py-0.5 rounded border border-red-900 uppercase">
