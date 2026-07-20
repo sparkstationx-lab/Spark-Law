@@ -7,14 +7,14 @@ interface SidebarProps {
   trendingArticles: LegalArticle[];
   onSelectArticle: (id: string) => void;
   recentSubmissions: LawUpdateSubmission[];
-  onSubmitUpdateOpen: () => void;
+  onAdminOpen: () => void;
 }
 
 export default function Sidebar({
   trendingArticles,
   onSelectArticle,
   recentSubmissions,
-  onSubmitUpdateOpen
+  onAdminOpen
 }: SidebarProps) {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
@@ -74,21 +74,21 @@ export default function Sidebar({
           <div className="flex items-center space-x-2">
             <Scale className="w-5 h-5 text-amber-400" />
             <span className="bg-red-800 text-amber-400 text-[10px] font-black tracking-widest uppercase px-2 py-0.5 rounded-md">
-              Lawyer Desk
+              Staff Portal
             </span>
           </div>
           <h3 className="text-base font-extrabold tracking-tight">
-            Have a case update or legal news scoop?
+            Spark Law Contributor Desk
           </h3>
           <p className="text-xs text-red-200 leading-relaxed">
-            Submit judicial briefs, court filings, and law updates directly to our editorial team for review and publishing.
+            Case updates, judicial briefs, and legal reporting are restricted exclusively to registered writers and staff contributors.
           </p>
           <button
-            onClick={onSubmitUpdateOpen}
+            onClick={onAdminOpen}
             className="w-full py-2 bg-amber-400 hover:bg-amber-300 active:scale-[0.99] text-neutral-900 font-bold text-xs rounded-lg transition-all shadow-md cursor-pointer flex items-center justify-center space-x-2"
           >
-            <Send className="w-3.5 h-3.5 shrink-0" />
-            <span>Submit Update</span>
+            <Award className="w-3.5 h-3.5 shrink-0" />
+            <span>Staff Portal Access</span>
           </button>
         </div>
       </div>

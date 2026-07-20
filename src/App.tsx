@@ -10,7 +10,7 @@ import BookmarksView from "./components/BookmarksView";
 import { AdminDashboard } from "./components/AdminDashboard";
 import { Bell, Scale, HelpCircle, BookOpen, AlertTriangle, ChevronRight, CornerDownRight, Award, Database, DatabaseZap } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { db, isSupabaseConfigured } from "./lib/supabase";
+import { db, isSupabaseConfigured, lastSupabaseError, SUPABASE_SQL_SCHEMA } from "./lib/supabase";
 
 export default function App() {
   // Navigation & Filtering state
@@ -40,6 +40,8 @@ export default function App() {
 
   // Database loading state
   const [isLoadingDb, setIsLoadingDb] = useState<boolean>(true);
+  const [supabaseError, setSupabaseError] = useState<string | null>(null);
+  const [copiedSchema, setCopiedSchema] = useState<boolean>(false);
 
   // Load data from db (Supabase or Local Storage fallback) on mount
   useEffect(() => {
@@ -104,6 +106,7 @@ export default function App() {
       } catch (error) {
         console.error("Error initializing Spark Law Database:", error);
       } finally {
+        setSupabaseError(lastSupabaseError);
         setIsLoadingDb(false);
       }
     }
@@ -232,7 +235,6 @@ export default function App() {
           setActiveTab("bookmarks");
           setSelectedArticleId(null);
         }}
-        onSubmitUpdateOpen={() => setIsSubmitModalOpen(true)}
         onGoHome={() => {
           setCurrentCategory("All Updates");
           setSelectedArticleId(null);
@@ -244,16 +246,43 @@ export default function App() {
       />
 
       {/* Supabase Connection Status Banner */}
-      <div className={`py-2 px-4 text-center text-xs font-semibold border-b flex items-center justify-center gap-2 transition-colors ${
+      <div className={`py-2 px-4 text-center text-xs font-semibold border-b flex flex-wrap items-center justify-center gap-x-2 gap-y-1 transition-colors ${
         isSupabaseConfigured
-          ? "bg-emerald-50 text-emerald-800 border-emerald-100"
+          ? supabaseError
+            ? "bg-rose-50 text-rose-800 border-rose-100 animate-pulse"
+            : "bg-emerald-50 text-emerald-800 border-emerald-100"
           : "bg-amber-50 text-amber-800 border-amber-100"
       }`} id="supabase-status-bar">
         {isSupabaseConfigured ? (
-          <>
-            <DatabaseZap className="w-4 h-4 text-emerald-600 animate-pulse shrink-0" />
-            <span>Spark Law Database: Connected to Real-time Supabase Cloud!</span>
-          </>
+          supabaseError ? (
+            <>
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>Database Query Error: {supabaseError} (Tables need setup).</span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(SUPABASE_SQL_SCHEMA);
+                  setCopiedSchema(true);
+                  setTimeout(() => setCopiedSchema(false), 3000);
+                }}
+                className="bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-300 px-2.5 py-0.5 rounded text-[11px] font-extrabold cursor-pointer transition-colors shadow-sm"
+              >
+                {copiedSchema ? "✓ Copied Setup Script!" : "📋 Copy SQL Setup Script"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowAdmin(true);
+                }}
+                className="underline text-red-800 hover:text-red-700 font-extrabold cursor-pointer"
+              >
+                Open SQL Guide
+              </button>
+            </>
+          ) : (
+            <>
+              <DatabaseZap className="w-4 h-4 text-emerald-600 animate-pulse shrink-0" />
+              <span>Spark Law Database: Connected to Real-time Supabase Cloud!</span>
+            </>
+          )
         ) : (
           <>
             <Database className="w-4 h-4 text-amber-600 shrink-0" />
@@ -436,7 +465,7 @@ export default function App() {
                     trendingArticles={trendingArticles}
                     onSelectArticle={handleSelectArticle}
                     recentSubmissions={submissions}
-                    onSubmitUpdateOpen={() => setIsSubmitModalOpen(true)}
+                    onAdminOpen={() => setShowAdmin(true)}
                   />
                 </div>
               </div>

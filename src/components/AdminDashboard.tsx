@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { LegalArticle, LawUpdateSubmission, PortalUser } from "../types";
 import { CATEGORIES, HIGH_COURTS_LIST } from "../data";
-import { isSupabaseConfigured, SUPABASE_SQL_SCHEMA, supabase } from "../lib/supabase";
+import { isSupabaseConfigured, SUPABASE_SQL_SCHEMA, supabase, lastSupabaseError } from "../lib/supabase";
 
 interface AdminDashboardProps {
   articles: LegalArticle[];
@@ -1105,18 +1105,32 @@ export function AdminDashboard({
               {/* Status Indicator Card */}
               <div className={`p-6 rounded-xl border ${
                 isSupabaseConfigured 
-                  ? "bg-green-950/20 border-green-800/60 text-green-300" 
+                  ? lastSupabaseError
+                    ? "bg-rose-950/20 border-rose-800/60 text-rose-300"
+                    : "bg-green-950/20 border-green-800/60 text-green-300" 
                   : "bg-amber-950/20 border-amber-800/60 text-amber-300"
               } space-y-3`}>
                 <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${isSupabaseConfigured ? "bg-green-500 animate-pulse" : "bg-amber-500"}`} />
+                  <div className={`w-3 h-3 rounded-full ${
+                    isSupabaseConfigured 
+                      ? lastSupabaseError 
+                        ? "bg-rose-500 animate-pulse" 
+                        : "bg-green-500 animate-pulse" 
+                      : "bg-amber-500"
+                  }`} />
                   <span className="font-extrabold text-sm uppercase tracking-wider font-mono">
-                    {isSupabaseConfigured ? "STATUS: LIVE CLOUD SYNC" : "STATUS: LOCAL FALLBACK ENGINE"}
+                    {isSupabaseConfigured 
+                      ? lastSupabaseError 
+                        ? "STATUS: SCHEMA CONFIGURATION REQUIRED" 
+                        : "STATUS: LIVE CLOUD SYNC" 
+                      : "STATUS: LOCAL FALLBACK ENGINE"}
                   </span>
                 </div>
-                <p className="text-xs text-neutral-300 leading-relaxed">
+                <p className="text-xs text-neutral-300 leading-relaxed font-medium">
                   {isSupabaseConfigured 
-                    ? "Spark Law is successfully linked to your live Supabase cloud backend! All published reports, advocate pitches, and team login accounts are synchronizing in real-time."
+                    ? lastSupabaseError
+                      ? `Your Supabase keys are configured successfully, but queries are currently failing with the error: "${lastSupabaseError}". This usually means your database tables have not been created yet in the Supabase database. Please copy the SQL Schema script below, go to your Supabase project's SQL Editor, paste and click "Run" to initialize all required tables.`
+                      : "Spark Law is successfully linked to your live Supabase cloud backend! All published reports, advocate pitches, and team login accounts are synchronizing in real-time."
                     : "The system is currently running on the local storage sandbox fallback because API environment credentials are not declared in Settings. Don't worry! All published legal updates, writer accounts, and submissions will still persist completely fine within your browser cache, and will migrate safely once configured."}
                 </p>
               </div>

@@ -2,13 +2,58 @@ import { createClient } from "@supabase/supabase-js";
 import { LegalArticle, LawUpdateSubmission, PortalUser } from "../types";
 
 // Read environment variables
-const SUPABASE_URL = (import.meta as any).env.VITE_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || "";
+const rawUrl = 
+  (import.meta as any).env.VITE_SUPABASE_URL || 
+  (import.meta as any).env.SUPABASE_URL || 
+  (typeof process !== "undefined" && process.env ? process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL : "") || 
+  "";
+
+const rawKey = 
+  (import.meta as any).env.VITE_SUPABASE_ANON_KEY || 
+  (import.meta as any).env.SUPABASE_ANON_KEY || 
+  (typeof process !== "undefined" && process.env ? process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY : "") || 
+  "";
+
+function sanitizeUrl(url: string): string {
+  if (!url) return "";
+  let clean = url.trim();
+  // Strip surrounding quotes
+  if ((clean.startsWith('"') && clean.endsWith('"')) || (clean.startsWith("'") && clean.endsWith("'"))) {
+    clean = clean.slice(1, -1);
+  }
+  clean = clean.trim();
+  // Strip trailing slashes
+  while (clean.endsWith("/")) {
+    clean = clean.slice(0, -1);
+  }
+  // Strip rest/v1 if accidentally included
+  if (clean.endsWith("/rest/v1")) {
+    clean = clean.slice(0, -8);
+  }
+  // Trim trailing slashes again after stripping path
+  while (clean.endsWith("/")) {
+    clean = clean.slice(0, -1);
+  }
+  return clean.trim();
+}
+
+function sanitizeKey(key: string): string {
+  if (!key) return "";
+  let clean = key.trim();
+  // Strip surrounding quotes
+  if ((clean.startsWith('"') && clean.endsWith('"')) || (clean.startsWith("'") && clean.endsWith("'"))) {
+    clean = clean.slice(1, -1);
+  }
+  return clean.trim();
+}
+
+const SUPABASE_URL = sanitizeUrl(rawUrl);
+const SUPABASE_ANON_KEY = sanitizeKey(rawKey);
 
 // Check if Supabase is properly configured
 export const isSupabaseConfigured = 
-  SUPABASE_URL.trim() !== "" && 
-  SUPABASE_ANON_KEY.trim() !== "" &&
+  SUPABASE_URL !== "" && 
+  SUPABASE_ANON_KEY !== "" &&
   !SUPABASE_URL.includes("YOUR_") &&
   !SUPABASE_ANON_KEY.includes("YOUR_");
 
@@ -16,6 +61,9 @@ export const isSupabaseConfigured =
 export const supabase = isSupabaseConfigured
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
+
+// Error tracking for Supabase queries to display in UI
+export let lastSupabaseError: string | null = null;
 
 // Clean instructions for setting up tables
 export const SUPABASE_SQL_SCHEMA = `-- COPY AND PASTE THIS SQL INTO YOUR SUPABASE SQL EDITOR TO SETUP TABLES:
@@ -108,8 +156,10 @@ export const db = {
             caseNumber: item.case_details.caseNumber,
           } : undefined
         }));
-      } catch (err) {
-        console.error("Supabase getArticles error, falling back to local storage:", err);
+      } catch (err: any) {
+        const errorMsg = err?.message || String(err);
+        lastSupabaseError = errorMsg;
+        console.error("Supabase getArticles error, falling back to local storage:", errorMsg);
       }
     }
 
@@ -197,8 +247,10 @@ export const db = {
           password: item.password,
           createdAt: item.created_at
         }));
-      } catch (err) {
-        console.error("Supabase getContributors error, falling back to local storage:", err);
+      } catch (err: any) {
+        const errorMsg = err?.message || String(err);
+        lastSupabaseError = errorMsg;
+        console.error("Supabase getContributors error, falling back to local storage:", errorMsg);
       }
     }
 
@@ -281,8 +333,10 @@ export const db = {
           status: item.status as "pending" | "approved" | "rejected",
           submittedAt: item.submitted_at
         }));
-      } catch (err) {
-        console.error("Supabase getSubmissions error, falling back to local storage:", err);
+      } catch (err: any) {
+        const errorMsg = err?.message || String(err);
+        lastSupabaseError = errorMsg;
+        console.error("Supabase getSubmissions error, falling back to local storage:", errorMsg);
       }
     }
 

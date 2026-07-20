@@ -9,7 +9,6 @@ interface HeaderProps {
   onSearchChange: (query: string) => void;
   bookmarkCount: number;
   onViewBookmarks: () => void;
-  onSubmitUpdateOpen: () => void;
   onGoHome: () => void;
   activeTab: "news" | "bookmarks" | "submissions";
   onAdminOpen: () => void;
@@ -22,7 +21,6 @@ export default function Header({
   onSearchChange,
   bookmarkCount,
   onViewBookmarks,
-  onSubmitUpdateOpen,
   onGoHome,
   activeTab,
   onAdminOpen
@@ -53,14 +51,6 @@ export default function Header({
           <span className="hidden sm:inline text-neutral-300">Supreme Court & High Courts Daily Dispatch</span>
         </div>
         <div className="flex items-center space-x-3">
-          <button 
-            onClick={onSubmitUpdateOpen}
-            className="flex items-center space-x-1 text-red-400 hover:text-red-300 transition-colors font-medium cursor-pointer text-xs"
-          >
-            <Send className="w-3 h-3" />
-            <span>Submit Update</span>
-          </button>
-          <span className="text-neutral-600">|</span>
           <button 
             onClick={onAdminOpen}
             className="flex items-center space-x-1 text-amber-400 hover:text-amber-300 transition-colors font-semibold cursor-pointer text-xs uppercase tracking-wider"
@@ -145,14 +135,6 @@ export default function Header({
                 {bookmarkCount}
               </span>
             )}
-          </button>
-
-          <button
-            onClick={onSubmitUpdateOpen}
-            className="hidden sm:flex items-center space-x-1.5 px-4 py-2 bg-red-800 hover:bg-red-950 text-white rounded-full text-sm font-semibold transition-all shadow-sm hover:shadow-md cursor-pointer"
-          >
-            <Newspaper className="w-4 h-4" />
-            <span>Submit Case</span>
           </button>
 
           {/* Mobile Menu Toggle Button */}
@@ -251,16 +233,6 @@ export default function Header({
                     {bookmarkCount}
                   </span>
                 )}
-              </button>
-              <button
-                onClick={() => {
-                  onSubmitUpdateOpen();
-                  setIsMobileMenuOpen(false);
-                }}
-                className="w-full flex items-center space-x-2.5 text-neutral-700 hover:bg-neutral-50 p-2.5 rounded-lg text-sm font-medium"
-              >
-                <FileText className="w-4 h-4 text-neutral-500" />
-                <span>Submit Legal Update</span>
               </button>
               <button
                 onClick={() => {
