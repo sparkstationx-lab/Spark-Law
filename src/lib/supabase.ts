@@ -6,13 +6,13 @@ const rawUrl =
   (import.meta as any).env.VITE_SUPABASE_URL || 
   (import.meta as any).env.SUPABASE_URL || 
   (typeof process !== "undefined" && process.env ? process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL : "") || 
-  "";
+  "https://lruroypyegtvdfatfrlv.supabase.co/rest/v1/";
 
 const rawKey = 
   (import.meta as any).env.VITE_SUPABASE_ANON_KEY || 
   (import.meta as any).env.SUPABASE_ANON_KEY || 
   (typeof process !== "undefined" && process.env ? process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY : "") || 
-  "";
+  "sb_publishable_kINIO7tzo577xz1bS7bErw_ER72PcO2";
 
 function sanitizeUrl(url: string): string {
   if (!url) return "";
