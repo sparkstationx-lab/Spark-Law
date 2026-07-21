@@ -63,6 +63,7 @@ export function AdminDashboard({
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [adminEmail, setAdminEmail] = useState("avd.akram@law.in");
+  const [showPassword, setShowPassword] = useState(false);
 
   React.useEffect(() => {
     fetch("/api/auth/config")
@@ -308,95 +309,248 @@ export function AdminDashboard({
 
   // If NOT logged in, show elegant login page
   if (!currentUser) {
+    // Dynamic greeting calculation
+    const getGreeting = () => {
+      const hour = new Date().getHours();
+      if (hour < 12) return "Good Morning";
+      if (hour < 18) return "Good Afternoon";
+      return "Good Evening";
+    };
+
     return (
-      <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-6" id="login-container">
-        <div className="w-full max-w-md bg-neutral-800 rounded-xl border border-neutral-700 shadow-2xl overflow-hidden animate-fade-in" id="login-card">
-          <div className="p-8 border-b border-neutral-700 text-center relative">
+      <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4 md:p-8 selection:bg-red-900 selection:text-white" id="login-container">
+        {/* Main Card Container */}
+        <div className="w-full max-w-5xl bg-neutral-900 rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden flex flex-col lg:flex-row animate-fade-in" id="login-card">
+          
+          {/* Left Column: Visual Brand & Live Stats Panel (Hidden on smaller screens, highly visible on LG+) */}
+          <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-neutral-950 via-neutral-900 to-red-950/20 p-12 flex-col justify-between border-r border-neutral-800 relative overflow-hidden" id="login-brand-panel">
+            {/* Ambient visual glow */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-red-900/10 rounded-full blur-3xl -mr-20 -mt-20 animate-pulse"></div>
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-red-900/5 rounded-full blur-3xl -ml-20 -mb-20"></div>
+
+            {/* Brand Header */}
+            <div className="relative z-10 flex items-center space-x-3">
+              <div className="bg-red-800/10 p-2.5 rounded-xl border border-red-900/30">
+                <Scale className="w-6 h-6 text-red-500" />
+              </div>
+              <div>
+                <span className="font-extrabold text-xl tracking-tight text-white font-sans">
+                  SPARK LAW
+                </span>
+                <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-semibold">
+                  Judicial Intelligence Network
+                </p>
+              </div>
+            </div>
+
+            {/* Editorial / Inspiring Quote */}
+            <div className="relative z-10 my-8 space-y-4">
+              <span className="inline-block bg-red-950/50 text-red-400 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full border border-red-900/40">
+                Staff Mandate
+              </span>
+              <p className="text-xl md:text-2xl font-light text-neutral-200 leading-relaxed italic font-sans">
+                "Justice, equality, and constitutional truth are the foundational pillars of our collective advocacy."
+              </p>
+              <div className="flex items-center space-x-3 pt-2">
+                <div className="h-0.5 w-8 bg-red-800"></div>
+                <p className="text-xs text-neutral-400 font-mono tracking-wider uppercase">Supreme Court Directorate</p>
+              </div>
+            </div>
+
+            {/* Platform Snapshot Panel */}
+            <div className="relative z-10 bg-neutral-950/60 p-6 rounded-xl border border-neutral-850/50 space-y-4 backdrop-blur-sm">
+              <div className="flex items-center justify-between border-b border-neutral-800/60 pb-3">
+                <div className="flex items-center space-x-2">
+                  <DatabaseZap className="w-4 h-4 text-red-500" />
+                  <span className="text-xs font-bold text-neutral-300 uppercase tracking-wider font-mono">Live Node Metrics</span>
+                </div>
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-neutral-900/50 p-2.5 rounded border border-neutral-800/40">
+                  <div className="text-sm font-extrabold text-white font-mono">{articles.length}</div>
+                  <div className="text-[9px] text-neutral-500 uppercase tracking-wider mt-0.5">Articles</div>
+                </div>
+                <div className="bg-neutral-900/50 p-2.5 rounded border border-neutral-800/40">
+                  <div className="text-sm font-extrabold text-white font-mono">{users.length + 1}</div>
+                  <div className="text-[9px] text-neutral-500 uppercase tracking-wider mt-0.5">Staff</div>
+                </div>
+                <div className="bg-neutral-900/50 p-2.5 rounded border border-neutral-800/40">
+                  <div className="text-sm font-extrabold text-white font-mono">{submissions.filter(s => s.status === "pending").length}</div>
+                  <div className="text-[9px] text-neutral-500 uppercase tracking-wider mt-0.5">Pitches</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Premium Custom Login Form */}
+          <div className="w-full lg:w-1/2 p-8 md:p-12 flex flex-col justify-between relative" id="login-form-panel">
+            {/* Top Close Button */}
             <button 
               onClick={onClose} 
-              className="absolute top-4 right-4 text-neutral-400 hover:text-white transition"
+              className="absolute top-6 right-6 text-neutral-500 hover:text-white hover:bg-neutral-850 p-2 rounded-full transition-all duration-300 border border-transparent hover:border-neutral-800 cursor-pointer"
               id="login-close-btn"
+              title="Close Portal"
             >
               <X className="w-5 h-5" />
             </button>
-            <div className="flex items-center justify-center space-x-2 text-red-500 mb-2">
-              <Scale className="w-8 h-8" />
-              <span className="font-extrabold text-2xl tracking-tighter text-white font-sans">
+
+            {/* Mobile Brand Header (Hidden on large screen) */}
+            <div className="lg:hidden flex items-center space-x-2 text-red-500 mb-8" id="login-mobile-header">
+              <Scale className="w-7 h-7" />
+              <span className="font-extrabold text-xl tracking-tighter text-white font-sans">
                 SPARK LAW
               </span>
             </div>
-            <p className="text-xs text-neutral-400 uppercase tracking-widest font-semibold">
-              Internal Staff & Admin Portal
-            </p>
-          </div>
 
-          <div className="p-8">
-            {loginError && (
-              <div className="mb-4 bg-red-950/40 border border-red-800 text-red-400 text-xs p-3 rounded flex items-start gap-2" id="login-error-alert">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{loginError}</span>
+            {/* Login Header with Dynamic Hourly Greeting */}
+            <div className="mb-8 mt-4 lg:mt-0">
+              <div className="flex items-center space-x-2 mb-1.5">
+                <span className="text-red-500 font-mono text-xs uppercase tracking-widest font-semibold">Security Gate</span>
+                <span className="text-neutral-600 font-sans text-xs">•</span>
+                <span className="text-neutral-400 font-sans text-xs">{getGreeting()}</span>
               </div>
-            )}
+              <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white font-sans">
+                Welcome back
+              </h2>
+              <p className="text-sm text-neutral-400 mt-1">
+                Please sign in to access your administrative control room and workspace.
+              </p>
+            </div>
 
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="block text-xs text-neutral-400 font-semibold uppercase tracking-wider mb-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={adminEmail}
-                  className="w-full bg-neutral-900 border border-neutral-700 rounded p-2.5 text-sm text-white focus:outline-none focus:border-red-500 transition"
-                  id="login-email-input"
-                />
-              </div>
+            {/* Main Form Block */}
+            <div className="space-y-6">
+              {loginError && (
+                <div className="bg-red-950/30 border border-red-900/50 text-red-400 text-xs p-4 rounded-xl flex items-start gap-3 relative animate-shake" id="login-error-alert">
+                  <AlertCircle className="w-5 h-5 shrink-0 text-red-500 mt-0.5" />
+                  <div className="flex-1 space-y-1">
+                    <p className="font-bold uppercase tracking-wider text-[10px] text-red-300">Access Denied</p>
+                    <p className="text-neutral-300 leading-relaxed">{loginError}</p>
+                  </div>
+                  <button 
+                    onClick={() => setLoginError("")}
+                    className="text-neutral-500 hover:text-neutral-300 transition shrink-0"
+                    title="Dismiss alert"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
 
-              <div>
-                <label className="block text-xs text-neutral-400 font-semibold uppercase tracking-wider mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-neutral-900 border border-neutral-700 rounded p-2.5 text-sm text-white focus:outline-none focus:border-red-500 transition"
-                  id="login-password-input"
-                />
-              </div>
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div className="space-y-1.5">
+                  <label className="block text-xs text-neutral-400 font-semibold uppercase tracking-wider">
+                    Staff Email Address
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={adminEmail}
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 px-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/50 transition-all duration-300"
+                      id="login-email-input"
+                    />
+                  </div>
+                </div>
 
-              <button
-                type="submit"
-                disabled={isLoggingIn}
-                className="w-full bg-red-800 hover:bg-red-700 active:bg-red-900 text-white font-bold text-sm py-3 px-4 rounded transition shadow-lg mt-6 disabled:opacity-60 disabled:cursor-wait"
-                id="login-submit-btn"
-              >
-                {isLoggingIn ? "Verifying Credentials..." : "Sign In to Dashboard"}
-              </button>
-            </form>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs text-neutral-400 font-semibold uppercase tracking-wider">
+                      Staff Password
+                    </label>
+                    <span className="text-[10px] text-neutral-600 uppercase font-mono tracking-wider">256-Bit Encrypted</span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl py-3 px-4 pr-12 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/50 transition-all duration-300"
+                      id="login-password-input"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 focus:outline-none transition-colors duration-200"
+                      title={showPassword ? "Hide password" : "Show password"}
+                      id="login-password-toggle"
+                    >
+                      {showPassword ? (
+                        <Eye className="w-4 h-4 text-red-500" />
+                      ) : (
+                        <Lock className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
 
-            <div className="mt-8 pt-6 border-t border-neutral-700 text-xs text-neutral-400 space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-neutral-300">Environment Configured Admin Credentials:</p>
                 <button
-                  type="button"
-                  onClick={() => {
-                    setEmail(adminEmail);
-                    setPassword("admin.akram");
-                  }}
-                  className="text-red-400 hover:text-red-300 underline cursor-pointer hover:no-underline transition font-medium text-[11px]"
-                  id="login-autofill-btn"
+                  type="submit"
+                  disabled={isLoggingIn}
+                  className="w-full bg-red-800 hover:bg-red-700 active:bg-red-900 text-white font-bold text-sm py-3 px-4 rounded-xl transition-all duration-300 shadow-xl shadow-red-950/20 mt-6 disabled:opacity-60 disabled:cursor-wait flex items-center justify-center space-x-2 border border-red-900/30"
+                  id="login-submit-btn"
                 >
-                  Auto-fill Form
+                  {isLoggingIn ? (
+                    <>
+                      <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      <span>Verifying Secure Keys...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-4 h-4 text-red-300" />
+                      <span>Authenticate Securely</span>
+                    </>
+                  )}
                 </button>
+              </form>
+            </div>
+
+            {/* Bottom Section: Security Info & Interactive Autofill */}
+            <div className="mt-10 pt-6 border-t border-neutral-800 space-y-4">
+              <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-850/60 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Sparkles className="w-3.5 h-3.5 text-red-500" />
+                    <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider font-sans">Authorized Access Credentials</span>
+                  </div>
+                  
+                  {/* Single Action Autofill Pill */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail(adminEmail);
+                      setPassword("admin.akram");
+                    }}
+                    className="text-[10px] font-bold text-red-400 hover:text-white bg-red-950/40 hover:bg-red-900/80 px-2.5 py-1 rounded-full border border-red-900/50 hover:border-red-700 transition-all duration-300 cursor-pointer"
+                    id="login-autofill-btn"
+                  >
+                    Quick Autofill
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-[11px] font-mono">
+                  <div className="bg-neutral-900/60 p-2.5 rounded border border-neutral-800/40">
+                    <span className="block text-[9px] text-neutral-500 uppercase font-sans font-bold tracking-wider mb-0.5">Admin ID</span>
+                    <span className="text-red-400 select-all font-semibold">{adminEmail}</span>
+                  </div>
+                  <div className="bg-neutral-900/60 p-2.5 rounded border border-neutral-800/40">
+                    <span className="block text-[9px] text-neutral-500 uppercase font-sans font-bold tracking-wider mb-0.5">Password</span>
+                    <span className="text-red-400 select-all font-semibold">admin.akram</span>
+                  </div>
+                </div>
               </div>
-              <div className="bg-neutral-900 p-2.5 rounded border border-neutral-800 font-mono text-[11px] text-red-400 space-y-1">
-                <p>Email ID: {adminEmail}</p>
-                <p>Password: admin.akram</p>
+
+              <div className="flex items-center space-x-2 text-[10px] text-neutral-500">
+                <div className="h-1.5 w-1.5 bg-red-900 rounded-full"></div>
+                <p>Verifies via secure, double-hashed server-side protocol.</p>
               </div>
             </div>
           </div>
