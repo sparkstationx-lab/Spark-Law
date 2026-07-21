@@ -17,7 +17,9 @@ import {
   UserPlus,
   Scale,
   Database,
-  DatabaseZap
+  DatabaseZap,
+  Upload,
+  Image
 } from "lucide-react";
 import { LegalArticle, LawUpdateSubmission, PortalUser } from "../types";
 import { CATEGORIES, HIGH_COURTS_LIST } from "../data";
@@ -189,6 +191,59 @@ export function AdminDashboard({
     localStorage.removeItem("sparklaw_current_user");
   };
 
+  // File upload state for Cover Pages
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState("");
+  const [uploadedFileSize, setUploadedFileSize] = useState("");
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFile(e.target.files[0]);
+    }
+  };
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload a valid image file (PNG, JPG, JPEG, WEBP).");
+      return;
+    }
+    // Limit to 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image size must be less than 5MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        setCustomImageUrl(reader.result);
+        setImageUrl(reader.result);
+        setUploadedFileName(file.name);
+        
+        const sizeInMb = (file.size / (1024 * 1024)).toFixed(2);
+        setUploadedFileSize(`${sizeInMb} MB`);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Handle Article Publication
   const handlePublish = (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,6 +287,8 @@ export function AdminDashboard({
     setTagsInput("");
     setIsBreaking(false);
     setCustomImageUrl("");
+    setUploadedFileName("");
+    setUploadedFileSize("");
     setCaseName("");
     setCitation("");
     setBench("");
@@ -863,10 +920,12 @@ export function AdminDashboard({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
                     Select Display Cover Image
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
+                  
+                  {/* Preset Images Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
                     {PRESET_IMAGES.map((img) => (
                       <button
                         key={img.url}
@@ -874,28 +933,140 @@ export function AdminDashboard({
                         onClick={() => {
                           setImageUrl(img.url);
                           setCustomImageUrl("");
+                          setUploadedFileName("");
+                          setUploadedFileSize("");
                         }}
-                        className={`relative rounded overflow-hidden h-16 border-2 transition ${
+                        className={`relative rounded-xl overflow-hidden h-16 border-2 transition-all duration-300 ${
                           imageUrl === img.url && !customImageUrl 
-                            ? "border-red-500" 
+                            ? "border-red-500 ring-2 ring-red-500/20 scale-[0.98]" 
                             : "border-transparent opacity-60 hover:opacity-100"
                         }`}
                       >
                         <img src={img.url} alt={img.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        <span className="absolute bottom-0 left-0 right-0 bg-black/70 text-[8px] text-center text-white py-0.5 truncate">
+                        <span className="absolute bottom-0 left-0 right-0 bg-black/85 text-[8px] text-center text-white py-1 font-sans font-medium px-1 truncate">
                           {img.name}
                         </span>
                       </button>
                     ))}
                   </div>
-                  <input
-                    type="url"
-                    value={customImageUrl}
-                    onChange={(e) => setCustomImageUrl(e.target.value)}
-                    placeholder="Or paste a custom image URL..."
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2.5 text-sm text-white focus:outline-none focus:border-red-500 transition"
-                    id="news-custom-image-input"
-                  />
+
+                  {/* Custom Upload and Paste Section */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-neutral-900/60 p-4 rounded-xl border border-neutral-800">
+                    {/* Left side: Drag & Drop File Upload */}
+                    <div className="space-y-2">
+                      <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                        Upload Custom File
+                      </span>
+                      
+                      <div
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={() => document.getElementById("cover-file-upload")?.click()}
+                        className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center text-center transition-all duration-300 cursor-pointer h-32 ${
+                          isDragging
+                            ? "border-red-500 bg-red-950/10 text-red-400"
+                            : "border-neutral-800 hover:border-neutral-700 hover:bg-neutral-950/40 text-neutral-400 hover:text-neutral-300"
+                        }`}
+                        id="cover-upload-dropzone"
+                      >
+                        <input
+                          type="file"
+                          id="cover-file-upload"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                          className="hidden"
+                        />
+                        <Upload className={`w-6 h-6 mb-2 transition-transform duration-300 ${isDragging ? "scale-110 text-red-500 animate-bounce" : "text-neutral-500"}`} />
+                        <p className="text-xs font-semibold">
+                          Drag & drop image here
+                        </p>
+                        <p className="text-[10px] text-neutral-500 mt-1">
+                          or click to browse from device
+                        </p>
+                        <p className="text-[9px] text-neutral-600 mt-0.5">
+                          Supports JPG, PNG, WEBP (Max 5MB)
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Right side: Paste URL or show Upload Details */}
+                    <div className="flex flex-col justify-between space-y-3">
+                      <div className="space-y-1.5">
+                        <span className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                          Or Paste Image Web URL
+                        </span>
+                        <input
+                          type="url"
+                          value={customImageUrl.startsWith("data:image/") ? "" : customImageUrl}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCustomImageUrl(val);
+                            if (val.trim()) {
+                              setImageUrl(val.trim());
+                              setUploadedFileName("Pasted Web URL");
+                              setUploadedFileSize("Dynamic Ingress");
+                            } else {
+                              setImageUrl(PRESET_IMAGES[0].url);
+                              setUploadedFileName("");
+                              setUploadedFileSize("");
+                            }
+                          }}
+                          placeholder="https://example.com/law-image.jpg"
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-red-500 placeholder-neutral-600 transition"
+                          id="news-custom-image-input"
+                        />
+                      </div>
+
+                      {/* Preview / Selection Status Panel */}
+                      <div className="bg-neutral-950 p-2.5 rounded-lg border border-neutral-850/60 flex items-center justify-between gap-3 h-[4.5rem]">
+                        <div className="flex items-center space-x-2.5 overflow-hidden">
+                          <div className="w-10 h-10 rounded overflow-hidden bg-neutral-900 border border-neutral-800 shrink-0">
+                            {customImageUrl ? (
+                              <img src={customImageUrl} alt="Custom upload preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-neutral-950">
+                                <Image className="w-4 h-4 text-neutral-700" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-[11px] truncate">
+                            {customImageUrl ? (
+                              <>
+                                <p className="font-semibold text-red-400 truncate max-w-[150px]">
+                                  {uploadedFileName || "Custom Cover Active"}
+                                </p>
+                                <p className="text-[9px] text-neutral-500 font-mono mt-0.5">
+                                  {uploadedFileSize || "External URL"}
+                                </p>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-neutral-400 font-medium">No custom image</p>
+                                <p className="text-[9px] text-neutral-500">Preset photo selected</p>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {customImageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCustomImageUrl("");
+                              setImageUrl(PRESET_IMAGES[0].url);
+                              setUploadedFileName("");
+                              setUploadedFileSize("");
+                            }}
+                            className="text-[9px] font-bold uppercase tracking-wider text-neutral-400 hover:text-red-400 bg-neutral-900 hover:bg-red-950/30 px-2 py-1 rounded border border-neutral-800 hover:border-red-900/40 transition duration-300 shrink-0"
+                            title="Reset to default preset"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
