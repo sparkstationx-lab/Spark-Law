@@ -169,7 +169,14 @@ export const db = {
 
     // Local storage fallback
     const saved = localStorage.getItem("sparklaw_articles");
-    return saved ? JSON.parse(saved) : [];
+    const parsed: LegalArticle[] = saved ? JSON.parse(saved) : [];
+    const unique = parsed.filter(
+      (item: LegalArticle, index: number, self: LegalArticle[]) => self.findIndex((a) => a.id === item.id) === index
+    );
+    if (unique.length !== parsed.length) {
+      localStorage.setItem("sparklaw_articles", JSON.stringify(unique));
+    }
+    return unique;
   },
 
   async saveArticle(article: LegalArticle): Promise<void> {
@@ -352,7 +359,14 @@ export const db = {
     }
 
     const saved = localStorage.getItem("sparklaw_submissions");
-    return saved ? JSON.parse(saved) : [];
+    const parsed: LawUpdateSubmission[] = saved ? JSON.parse(saved) : [];
+    const unique = parsed.filter(
+      (item: LawUpdateSubmission, index: number, self: LawUpdateSubmission[]) => self.findIndex((s) => s.id === item.id) === index
+    );
+    if (unique.length !== parsed.length) {
+      localStorage.setItem("sparklaw_submissions", JSON.stringify(unique));
+    }
+    return unique;
   },
 
   async saveSubmission(sub: LawUpdateSubmission): Promise<void> {

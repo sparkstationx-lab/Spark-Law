@@ -54,7 +54,10 @@ export default function App() {
 
         // Populate articles
         if (dbArticles.length > 0) {
-          setArticles(dbArticles);
+          const uniqueArticles = dbArticles.filter(
+            (art, index, self) => self.findIndex((a) => a.id === art.id) === index
+          );
+          setArticles(uniqueArticles);
         } else {
           // If both Supabase and localStorage are clean, bootstrap with our mock articles
           setArticles(MOCK_ARTICLES);
@@ -69,7 +72,10 @@ export default function App() {
 
         // Populate submissions
         if (dbSubmissions.length > 0) {
-          setSubmissions(dbSubmissions);
+          const uniqueSubmissions = dbSubmissions.filter(
+            (sub, index, self) => self.findIndex((s) => s.id === sub.id) === index
+          );
+          setSubmissions(uniqueSubmissions);
         } else {
           const defaultSubmissions: LawUpdateSubmission[] = [
             {
@@ -189,7 +195,10 @@ export default function App() {
         articles={articles}
         onAddArticle={async (newArt) => {
           await db.saveArticle(newArt);
-          setArticles(prev => [newArt, ...prev]);
+          setArticles(prev => {
+            const filtered = prev.filter(art => art.id !== newArt.id);
+            return [newArt, ...filtered];
+          });
         }}
         onDeleteArticle={async (id) => {
           await db.deleteArticle(id);
