@@ -65,6 +65,7 @@ export function AdminDashboard({
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [adminEmail, setAdminEmail] = useState("avd.akram@law.in");
+  const [isDefaultPassword, setIsDefaultPassword] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
 
   React.useEffect(() => {
@@ -73,6 +74,9 @@ export function AdminDashboard({
       .then((data) => {
         if (data.adminEmail) {
           setAdminEmail(data.adminEmail);
+        }
+        if (data.isDefaultPassword !== undefined) {
+          setIsDefaultPassword(data.isDefaultPassword);
         }
       })
       .catch((err) => console.error("Error loading secure auth config:", err));
@@ -579,18 +583,24 @@ export function AdminDashboard({
                     <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider font-sans">Authorized Access Credentials</span>
                   </div>
                   
-                  {/* Single Action Autofill Pill */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail(adminEmail);
-                      setPassword("admin.akram");
-                    }}
-                    className="text-[10px] font-bold text-red-400 hover:text-white bg-red-950/40 hover:bg-red-900/80 px-2.5 py-1 rounded-full border border-red-900/50 hover:border-red-700 transition-all duration-300 cursor-pointer"
-                    id="login-autofill-btn"
-                  >
-                    Quick Autofill
-                  </button>
+                  {/* Single Action Autofill Pill - Only shown for default/development settings */}
+                  {isDefaultPassword ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail(adminEmail);
+                        setPassword("admin.akram");
+                      }}
+                      className="text-[10px] font-bold text-red-400 hover:text-white bg-red-950/40 hover:bg-red-900/80 px-2.5 py-1 rounded-full border border-red-900/50 hover:border-red-700 transition-all duration-300 cursor-pointer"
+                      id="login-autofill-btn"
+                    >
+                      Quick Autofill
+                    </button>
+                  ) : (
+                    <span className="text-[9px] font-bold text-amber-500 bg-amber-950/35 border border-amber-900/40 px-2.5 py-0.5 rounded-full font-mono">
+                      Secure Custom Key Active
+                    </span>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-[11px] font-mono">
@@ -600,7 +610,9 @@ export function AdminDashboard({
                   </div>
                   <div className="bg-neutral-900/60 p-2.5 rounded border border-neutral-800/40">
                     <span className="block text-[9px] text-neutral-500 uppercase font-sans font-bold tracking-wider mb-0.5">Password</span>
-                    <span className="text-red-400 select-all font-semibold">admin.akram</span>
+                    <span className="text-red-400 select-all font-semibold">
+                      {isDefaultPassword ? "admin.akram" : "•••••••• [Custom]"}
+                    </span>
                   </div>
                 </div>
               </div>

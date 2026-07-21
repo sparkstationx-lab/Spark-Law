@@ -1,28 +1,20 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
-import fs from "fs";
 import { createServer as createViteServer } from "vite";
 
 // Load environment variables from .env
 const result = dotenv.config();
 
-const logFilePath = path.join(process.cwd(), "src", "auth_logs.txt");
-
-function writeLog(message: string) {
+function serverLog(message: string) {
   const timestamp = new Date().toISOString();
-  const logLine = `[${timestamp}] ${message}\n`;
-  try {
-    fs.appendFileSync(logFilePath, logLine);
-  } catch (err) {
-    console.error("Failed to write to log file:", err);
-  }
+  console.log(`[${timestamp}] ${message}`);
 }
 
 if (result.error) {
-  writeLog(`[Dotenv] Error loading .env file: ${result.error.message}`);
+  serverLog(`[Dotenv] Error loading .env file: ${result.error.message}`);
 } else {
-  writeLog(`[Dotenv] Loaded keys: ${Object.keys(result.parsed || {}).join(", ")}`);
+  serverLog(`[Dotenv] Loaded keys: ${Object.keys(result.parsed || {}).join(", ")}`);
 }
 
 async function startServer() {
@@ -32,10 +24,13 @@ async function startServer() {
   // Parse JSON bodies for API requests
   app.use(express.json());
 
-  // API Route: Get public auth configurations (e.g. configured admin email)
+  // API Route: Get public auth configurations (e.g. configured admin email and default status)
   app.get("/api/auth/config", (req, res) => {
-    const adminEmail = process.env.ADMIN_EMAIL || "avd.akram@law.in";
-    res.json({ adminEmail });
+    const adminEmail = (process.env.ADMIN_EMAIL || "avd.akram@law.in").replace(/['"]/g, "").trim();
+    const rawPassword = process.env.ADMIN_PASSWORD || "admin.akram";
+    const cleanPassword = rawPassword.replace(/['"]/g, "").trim();
+    const isDefaultPassword = cleanPassword === "admin.akram";
+    res.json({ adminEmail, isDefaultPassword });
   });
 
   // API Route: Secure Server-Side Login Verification
@@ -60,11 +55,10 @@ async function startServer() {
 
     const isPasswordValid = cleanProvidedPassword === expectedPassword;
 
-    writeLog(`[Login Attempt] Provided email: "${cleanProvidedEmail}", expected email: "${expectedEmail}". Match: ${isEmailValid}.`);
-    writeLog(`[Login Attempt] Provided password length: ${cleanProvidedPassword.length}, expected password length: ${expectedPassword.length}. Match: ${isPasswordValid}.`);
+    serverLog(`[Login Attempt] Provided email: "${cleanProvidedEmail}". Valid: ${isEmailValid}.`);
 
     if (isEmailValid && isPasswordValid) {
-      writeLog(`[Login Success] Successful admin login for: ${cleanProvidedEmail}`);
+      serverLog(`[Login Success] Successful admin login for: ${cleanProvidedEmail}`);
       return res.json({
         success: true,
         user: {
@@ -77,7 +71,7 @@ async function startServer() {
       });
     }
 
-    writeLog(`[Login Failure] Failed login attempt for email: "${cleanProvidedEmail}"`);
+    serverLog(`[Login Failure] Failed login attempt for email: "${cleanProvidedEmail}"`);
     return res.status(401).json({
       success: false,
       message: "Invalid email or password.",
@@ -105,7 +99,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    writeLog(`[Server Boot] Running on http://localhost:${PORT}`);
+    serverLog(`[Server Boot] Running on http://localhost:${PORT}`);
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
